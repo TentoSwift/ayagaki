@@ -14,7 +14,7 @@ struct StoreError: LocalizedError {
 final class DesignStore {
     private let context: NSManagedObjectContext
 
-    init(context: NSManagedObjectContext) {
+    nonisolated init(context: NSManagedObjectContext) {
         self.context = context
     }
 

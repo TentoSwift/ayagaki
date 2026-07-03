@@ -17,6 +17,7 @@
 		5D3A93FA19B2236176CDE3D8 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF549A8C82FBD9F1C2700D /* NotationView.swift */; };
 		6165E68C0CBE3B91D56C8F78 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B710DA7D1971E92F63E210 /* ContentView.swift */; };
 		6225BE536361AF46B8850F59 /* GridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363A5050962A55CB16C8FEB8 /* GridGeometry.swift */; };
+		68AD0922250A3D3ED8F236A6 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88D3FABD79BBE504FB91C4D /* Main.swift */; };
 		69CC6850FDCDAEC5D20A8AFB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B710DA7D1971E92F63E210 /* ContentView.swift */; };
 		6C415774CF2B8159566AC7E9 /* EditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2598AF296EC66F55EBB934E /* EditorViewModel.swift */; };
 		6C983D168BE6515B4BB4F017 /* AyagakiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */; };
@@ -29,6 +30,7 @@
 		A033F771B74D6480375F55D8 /* BraidModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C77A11E22483BB1F2B6C43 /* BraidModel.swift */; };
 		A05CAE46FC7358A40641EE01 /* MCPServerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A893108B5BFA30BA37B1775 /* MCPServerController.swift */; };
 		B94CE0F7AC1CF111FFD851CB /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E86DC3229CF9275C77B463 /* Persistence.swift */; };
+		BCA47E1DDF44F0AE1B4A885E /* StdioMCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4150C543E5E9216B9D50C31 /* StdioMCPServer.swift */; };
 		BCA5B807E391D1110B686931 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B837B4A4EE5EAB3174B9488 /* EditorView.swift */; };
 		C47C20D989F1B7C2FE9A5E3B /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF549A8C82FBD9F1C2700D /* NotationView.swift */; };
 		C64699DA02E0D06AE4183AC7 /* Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D0B36F21F437C96D6E763A /* Export.swift */; };
@@ -37,10 +39,12 @@
 		D55DF18BEED63A8C5599528A /* Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D0B36F21F437C96D6E763A /* Export.swift */; };
 		D82F57C2E012817B3D4F9222 /* DesignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */; };
 		DD0A008DA0AA8E3AF608C22A /* DesignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */; };
+		E11A6DB62E37CC7BCD610DD1 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88D3FABD79BBE504FB91C4D /* Main.swift */; };
 		E3688DA050C78301054469AA /* HTTPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */; };
 		EB0B26ADBF801BDA9F653914 /* AyagakiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */; };
 		F2048018058000F8BD6F0074 /* GridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363A5050962A55CB16C8FEB8 /* GridGeometry.swift */; };
 		F349190814F3B564C52D4FF2 /* Design+CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */; };
+		F3CA96295716F1FF52A0EF6D /* StdioMCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4150C543E5E9216B9D50C31 /* StdioMCPServer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,9 +63,11 @@
 		ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridCanvasView.swift; sourceTree = "<group>"; };
 		B018FD6E8FB2992037418EEC /* AyagakiMCPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AyagakiMCPHandler.swift; sourceTree = "<group>"; };
 		B2598AF296EC66F55EBB934E /* EditorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorViewModel.swift; sourceTree = "<group>"; };
+		B4150C543E5E9216B9D50C31 /* StdioMCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StdioMCPServer.swift; sourceTree = "<group>"; };
 		C0E86DC3229CF9275C77B463 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCanvasView.swift; sourceTree = "<group>"; };
 		D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorUtil.swift; sourceTree = "<group>"; };
+		E88D3FABD79BBE504FB91C4D /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		F5B710DA7D1971E92F63E210 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -73,6 +79,7 @@
 				A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */,
 				6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */,
 				0A893108B5BFA30BA37B1775 /* MCPServerController.swift */,
+				B4150C543E5E9216B9D50C31 /* StdioMCPServer.swift */,
 			);
 			path = MCP;
 			sourceTree = "<group>";
@@ -98,6 +105,7 @@
 				38D0B36F21F437C96D6E763A /* Export.swift */,
 				ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */,
 				363A5050962A55CB16C8FEB8 /* GridGeometry.swift */,
+				E88D3FABD79BBE504FB91C4D /* Main.swift */,
 				9FAF549A8C82FBD9F1C2700D /* NotationView.swift */,
 				C0E86DC3229CF9275C77B463 /* Persistence.swift */,
 				CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */,
@@ -210,9 +218,11 @@
 				6225BE536361AF46B8850F59 /* GridGeometry.swift in Sources */,
 				9498F26A9739AD1CBA4F68E6 /* HTTPServer.swift in Sources */,
 				CB8C065ED9D6D0E86D76FC46 /* MCPServerController.swift in Sources */,
+				E11A6DB62E37CC7BCD610DD1 /* Main.swift in Sources */,
 				5D3A93FA19B2236176CDE3D8 /* NotationView.swift in Sources */,
 				B94CE0F7AC1CF111FFD851CB /* Persistence.swift in Sources */,
 				066CC8325F0F75505BEE2042 /* PreviewCanvasView.swift in Sources */,
+				F3CA96295716F1FF52A0EF6D /* StdioMCPServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,9 +244,11 @@
 				F2048018058000F8BD6F0074 /* GridGeometry.swift in Sources */,
 				E3688DA050C78301054469AA /* HTTPServer.swift in Sources */,
 				A05CAE46FC7358A40641EE01 /* MCPServerController.swift in Sources */,
+				68AD0922250A3D3ED8F236A6 /* Main.swift in Sources */,
 				C47C20D989F1B7C2FE9A5E3B /* NotationView.swift in Sources */,
 				8B6405BD78947521370FEDC6 /* Persistence.swift in Sources */,
 				83C699E596DF522E42725D0F /* PreviewCanvasView.swift in Sources */,
+				BCA47E1DDF44F0AE1B4A885E /* StdioMCPServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

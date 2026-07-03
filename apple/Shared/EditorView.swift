@@ -1,6 +1,9 @@
 import SwiftUI
 import CoreData
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 struct EditorView: View {
     @StateObject private var vm: EditorViewModel
@@ -263,14 +266,41 @@ private struct SettingsForm: View {
     @Binding var showClearConfirm: Bool
     var dismiss: () -> Void
 
+    #if os(macOS)
+    @EnvironmentObject private var mcpServer: MCPServerController
+    @State private var tab = 0
+    #endif
+
     var body: some View {
         #if os(macOS)
-        formBody
-            .padding(20)
-            .frame(width: 360)
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                Text("デザイン").tag(0)
+                Text("MCP連携").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding([.top, .horizontal], 16)
+            .padding(.bottom, 4)
+
+            if tab == 0 {
+                designForm
+            } else {
+                MCPSettingsView(statusText: mcpServer.statusText)
+            }
+
+            Divider()
+            HStack {
+                Spacer()
+                Button("閉じる") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(12)
+        }
+        .frame(width: 560, height: 500)
         #else
         NavigationStack {
-            formBody
+            designForm
                 .navigationTitle("設定")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -282,7 +312,7 @@ private struct SettingsForm: View {
         #endif
     }
 
-    private var formBody: some View {
+    private var designForm: some View {
         Form {
             Section("デザイン") {
                 TextField("デザイン名", text: Binding(
@@ -310,11 +340,69 @@ private struct SettingsForm: View {
                     showClearConfirm = true
                 }
             }
-            #if os(macOS)
-            Section {
-                HStack { Spacer(); Button("閉じる") { dismiss() } }
-            }
-            #endif
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
     }
 }
+
+// MARK: - MCP 連携タブ（macOS のみ）
+
+#if os(macOS)
+private struct MCPSettingsView: View {
+    var statusText: String
+    @State private var copiedCommand: String?
+
+    private var executablePath: String { Bundle.main.executablePath ?? "" }
+    private var httpURL: String { "http://127.0.0.1:\(MCPServerController.port)/mcp" }
+
+    var body: some View {
+        Form {
+            Section("内蔵 HTTP サーバ（アプリ起動中に接続）") {
+                LabeledContent("状態", value: statusText)
+                commandRow("Claude Code に登録",
+                           "claude mcp add --transport http ayagaki \(httpURL)")
+                commandRow("Codex に登録",
+                           "codex mcp add ayagaki --url \(httpURL)")
+            }
+            Section("stdio サーバ（アプリ起動不要・クライアントが自動起動）") {
+                commandRow("Claude Code に登録",
+                           "claude mcp add ayagaki -- \"\(executablePath)\" --mcp")
+                commandRow("Codex に登録",
+                           "codex mcp add ayagaki -- \"\(executablePath)\" --mcp")
+                Text("本体を --mcp 付きで起動すると画面を出さずに MCP サーバとして動きます。登録前にアプリを /Applications に置いておくと、パスが変わりません。どちらの方式でも変更は開いている画面に反映されます。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func commandRow(_ label: String, _ command: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(command, forType: .string)
+                    copiedCommand = command
+                } label: {
+                    Label(copiedCommand == command ? "コピー済み" : "コピー",
+                          systemImage: copiedCommand == command ? "checkmark" : "doc.on.doc")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+            }
+            Text(command)
+                .font(.system(size: 11, design: .monospaced))
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 2)
+    }
+}
+#endif

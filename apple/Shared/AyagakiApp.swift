@@ -1,6 +1,5 @@
 import SwiftUI
 
-@main
 struct AyagakiApp: App {
     private let persistence = PersistenceController.shared
     #if os(macOS)

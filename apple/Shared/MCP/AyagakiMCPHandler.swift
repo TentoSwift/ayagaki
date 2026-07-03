@@ -32,6 +32,28 @@ final class AyagakiMCPHandler: @unchecked Sendable {
         }
     }
 
+    // MARK: - stdio 入口
+
+    /// stdio 用: 1 行ぶんの JSON-RPC を処理して応答 JSON を返す（通知なら nil）
+    func handleLine(_ data: Data) async -> Data? {
+        let parsed = try? JSONSerialization.jsonObject(with: data)
+        if let message = parsed as? [String: Any] {
+            guard let response = await process(message) else { return nil }
+            return try? JSONSerialization.data(withJSONObject: response, options: [.sortedKeys])
+        }
+        if let batch = parsed as? [[String: Any]] {
+            var responses: [[String: Any]] = []
+            for message in batch {
+                if let response = await process(message) { responses.append(response) }
+            }
+            guard !responses.isEmpty else { return nil }
+            return try? JSONSerialization.data(withJSONObject: responses, options: [.sortedKeys])
+        }
+        return try? JSONSerialization.data(
+            withJSONObject: Self.errorResponse(id: NSNull(), code: -32700, message: "Parse error"),
+            options: [.sortedKeys])
+    }
+
     private func handlePost(_ request: HTTPRequest) async -> HTTPResponse {
         let parsed = try? JSONSerialization.jsonObject(with: request.body)
         if let message = parsed as? [String: Any] {

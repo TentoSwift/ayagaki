@@ -6,6 +6,14 @@ final class PersistenceController {
 
     let container: NSPersistentCloudKitContainer
 
+    /// このプロセスの書き込み識別子（GUI / stdio MCP を区別）
+    private static let author =
+        ProcessInfo.processInfo.arguments.contains("--mcp") ? "mcp-stdio" : "app"
+
+    private var historyContext: NSManagedObjectContext?
+    private var historyToken: NSPersistentHistoryToken?
+    private var remoteChangeObserver: NSObjectProtocol?
+
     private static func makeModel() -> NSManagedObjectModel {
         let entity = NSEntityDescription()
         entity.name = "Design"
@@ -65,5 +73,44 @@ final class PersistenceController {
 
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        container.viewContext.transactionAuthor = Self.author
+
+        // 別プロセス（stdio MCP / GUI）や CloudKit の変更を Persistent History でマージする
+        let coordinator = container.persistentStoreCoordinator
+        historyToken = coordinator.currentPersistentHistoryToken(fromStores: coordinator.persistentStores)
+        historyContext = container.newBackgroundContext()
+        remoteChangeObserver = NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange, object: coordinator, queue: nil
+        ) { [weak self] _ in
+            self?.mergeRemoteChanges()
+        }
+    }
+
+    /// 他プロセスのトランザクションを viewContext に取り込み、開いている画面へ通知する
+    private func mergeRemoteChanges() {
+        guard let historyContext else { return }
+        historyContext.perform { [weak self] in
+            guard let self else { return }
+            let request = NSPersistentHistoryChangeRequest.fetchHistory(after: self.historyToken)
+            guard let result = try? historyContext.execute(request) as? NSPersistentHistoryResult,
+                  let transactions = result.result as? [NSPersistentHistoryTransaction],
+                  !transactions.isEmpty else { return }
+            self.historyToken = transactions.last?.token ?? self.historyToken
+
+            // 自プロセスの保存は viewContext に反映済みなので除外
+            let foreign = transactions.filter { $0.author != Self.author }
+            guard !foreign.isEmpty else { return }
+            let changedIDs = Set(foreign.flatMap { $0.changes ?? [] }.map(\.changedObjectID))
+
+            DispatchQueue.main.async {
+                for tx in foreign {
+                    self.container.viewContext.mergeChanges(fromContextDidSave: tx.objectIDNotification())
+                }
+                for objectID in changedIDs {
+                    NotificationCenter.default.post(name: BraidSpec.externalChangeNotification,
+                                                    object: objectID)
+                }
+            }
+        }
     }
 }
