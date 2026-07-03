@@ -1,0 +1,76 @@
+name: Ayagaki
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16.0"
+    macOS: "13.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: LV3H7Q68W6
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Ayagaki-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tento.ayagaki
+        PRODUCT_NAME: Ayagaki
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Ayagaki-iOS-Info.plist
+      properties:
+        CFBundleDisplayName: 綾書エディタ
+        UIBackgroundModes: [remote-notification]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        "UISupportedInterfaceOrientations~ipad": [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: Ayagaki-iOS.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.tento.ayagaki]
+        com.apple.developer.icloud-services: [CloudKit]
+        aps-environment: development
+  Ayagaki-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tento.ayagaki
+        PRODUCT_NAME: Ayagaki
+    info:
+      path: Ayagaki-macOS-Info.plist
+      properties:
+        CFBundleDisplayName: 綾書エディタ
+        LSApplicationCategoryType: public.app-category.graphics-design
+    entitlements:
+      path: Ayagaki-macOS.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.network.server: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.tento.ayagaki]
+        com.apple.developer.icloud-services: [CloudKit]
+        com.apple.developer.aps-environment: development
+schemes:
+  Ayagaki-iOS:
+    build:
+      targets:
+        Ayagaki-iOS: all
+    run:
+      config: Debug
+  Ayagaki-macOS:
+    build:
+      targets:
+        Ayagaki-macOS: all
+    run:
+      config: Debug

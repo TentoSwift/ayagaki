@@ -1,0 +1,476 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		066CC8325F0F75505BEE2042 /* PreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */; };
+		235A8BC183FA9C241A3B0FD5 /* ColorUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */; };
+		385CE4602E7A6D7C967F5C89 /* ColorUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */; };
+		5186F0D9B03632DABA8103D4 /* Design+CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */; };
+		5A5B8843346084FC27119217 /* AyagakiMCPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018FD6E8FB2992037418EEC /* AyagakiMCPHandler.swift */; };
+		5A8C42299B3B7E571E72FE37 /* GridCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */; };
+		5CE6333E5363C6FFA197A4AC /* BraidModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C77A11E22483BB1F2B6C43 /* BraidModel.swift */; };
+		5D3A93FA19B2236176CDE3D8 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF549A8C82FBD9F1C2700D /* NotationView.swift */; };
+		6165E68C0CBE3B91D56C8F78 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B710DA7D1971E92F63E210 /* ContentView.swift */; };
+		6225BE536361AF46B8850F59 /* GridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363A5050962A55CB16C8FEB8 /* GridGeometry.swift */; };
+		69CC6850FDCDAEC5D20A8AFB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B710DA7D1971E92F63E210 /* ContentView.swift */; };
+		6C415774CF2B8159566AC7E9 /* EditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2598AF296EC66F55EBB934E /* EditorViewModel.swift */; };
+		6C983D168BE6515B4BB4F017 /* AyagakiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */; };
+		72AF522E2DC76A92F7A3FFA2 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B837B4A4EE5EAB3174B9488 /* EditorView.swift */; };
+		83C699E596DF522E42725D0F /* PreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */; };
+		8B6405BD78947521370FEDC6 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E86DC3229CF9275C77B463 /* Persistence.swift */; };
+		942C2A71C020C03A0BE822D1 /* EditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2598AF296EC66F55EBB934E /* EditorViewModel.swift */; };
+		9498F26A9739AD1CBA4F68E6 /* HTTPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */; };
+		9DE6E6BCA47ED068B4EC6350 /* AyagakiMCPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018FD6E8FB2992037418EEC /* AyagakiMCPHandler.swift */; };
+		A033F771B74D6480375F55D8 /* BraidModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C77A11E22483BB1F2B6C43 /* BraidModel.swift */; };
+		A05CAE46FC7358A40641EE01 /* MCPServerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A893108B5BFA30BA37B1775 /* MCPServerController.swift */; };
+		B94CE0F7AC1CF111FFD851CB /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E86DC3229CF9275C77B463 /* Persistence.swift */; };
+		BCA5B807E391D1110B686931 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B837B4A4EE5EAB3174B9488 /* EditorView.swift */; };
+		C47C20D989F1B7C2FE9A5E3B /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF549A8C82FBD9F1C2700D /* NotationView.swift */; };
+		C64699DA02E0D06AE4183AC7 /* Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D0B36F21F437C96D6E763A /* Export.swift */; };
+		CB8C065ED9D6D0E86D76FC46 /* MCPServerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A893108B5BFA30BA37B1775 /* MCPServerController.swift */; };
+		CC9A3FE9B876F9E3004A929E /* GridCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */; };
+		D55DF18BEED63A8C5599528A /* Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D0B36F21F437C96D6E763A /* Export.swift */; };
+		D82F57C2E012817B3D4F9222 /* DesignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */; };
+		DD0A008DA0AA8E3AF608C22A /* DesignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */; };
+		E3688DA050C78301054469AA /* HTTPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */; };
+		EB0B26ADBF801BDA9F653914 /* AyagakiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */; };
+		F2048018058000F8BD6F0074 /* GridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363A5050962A55CB16C8FEB8 /* GridGeometry.swift */; };
+		F349190814F3B564C52D4FF2 /* Design+CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0A893108B5BFA30BA37B1775 /* MCPServerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServerController.swift; sourceTree = "<group>"; };
+		302CA7291D8B7471F1CE6266 /* Ayagaki-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ayagaki-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		363A5050962A55CB16C8FEB8 /* GridGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridGeometry.swift; sourceTree = "<group>"; };
+		38D0B36F21F437C96D6E763A /* Export.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Export.swift; sourceTree = "<group>"; };
+		59CC35E4617B7E5707751C58 /* Ayagaki-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Ayagaki-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B837B4A4EE5EAB3174B9488 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServer.swift; sourceTree = "<group>"; };
+		78C77A11E22483BB1F2B6C43 /* BraidModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BraidModel.swift; sourceTree = "<group>"; };
+		830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design+CoreData.swift"; sourceTree = "<group>"; };
+		90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AyagakiApp.swift; sourceTree = "<group>"; };
+		9FAF549A8C82FBD9F1C2700D /* NotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotationView.swift; sourceTree = "<group>"; };
+		A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignStore.swift; sourceTree = "<group>"; };
+		ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridCanvasView.swift; sourceTree = "<group>"; };
+		B018FD6E8FB2992037418EEC /* AyagakiMCPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AyagakiMCPHandler.swift; sourceTree = "<group>"; };
+		B2598AF296EC66F55EBB934E /* EditorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorViewModel.swift; sourceTree = "<group>"; };
+		C0E86DC3229CF9275C77B463 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCanvasView.swift; sourceTree = "<group>"; };
+		D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorUtil.swift; sourceTree = "<group>"; };
+		F5B710DA7D1971E92F63E210 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0015BD87120A9CAF392F7D71 /* MCP */ = {
+			isa = PBXGroup;
+			children = (
+				B018FD6E8FB2992037418EEC /* AyagakiMCPHandler.swift */,
+				A3DEA43FE2EDFAFA76EE5A7B /* DesignStore.swift */,
+				6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */,
+				0A893108B5BFA30BA37B1775 /* MCPServerController.swift */,
+			);
+			path = MCP;
+			sourceTree = "<group>";
+		};
+		31A5BD3E0D0FE9321868405A = {
+			isa = PBXGroup;
+			children = (
+				36CA4561EAB58A9EFF6A7B1E /* Shared */,
+				88E80A8B835F057CCC0DF7FA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		36CA4561EAB58A9EFF6A7B1E /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */,
+				78C77A11E22483BB1F2B6C43 /* BraidModel.swift */,
+				D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */,
+				F5B710DA7D1971E92F63E210 /* ContentView.swift */,
+				830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */,
+				5B837B4A4EE5EAB3174B9488 /* EditorView.swift */,
+				B2598AF296EC66F55EBB934E /* EditorViewModel.swift */,
+				38D0B36F21F437C96D6E763A /* Export.swift */,
+				ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */,
+				363A5050962A55CB16C8FEB8 /* GridGeometry.swift */,
+				9FAF549A8C82FBD9F1C2700D /* NotationView.swift */,
+				C0E86DC3229CF9275C77B463 /* Persistence.swift */,
+				CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */,
+				0015BD87120A9CAF392F7D71 /* MCP */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		88E80A8B835F057CCC0DF7FA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				59CC35E4617B7E5707751C58 /* Ayagaki-iOS.app */,
+				302CA7291D8B7471F1CE6266 /* Ayagaki-macOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D90DFF95EC87981C0E09FF4F /* Ayagaki-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 20956A11034348ACC57C35BF /* Build configuration list for PBXNativeTarget "Ayagaki-macOS" */;
+			buildPhases = (
+				C6DD1CA4B81383D95E4B7754 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Ayagaki-macOS";
+			packageProductDependencies = (
+			);
+			productName = "Ayagaki-macOS";
+			productReference = 302CA7291D8B7471F1CE6266 /* Ayagaki-macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E6AE24DAFC62BB037E261937 /* Ayagaki-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14711230352DA3A0F9AEAC4C /* Build configuration list for PBXNativeTarget "Ayagaki-iOS" */;
+			buildPhases = (
+				C7450B767E50F59282CBFF4E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Ayagaki-iOS";
+			packageProductDependencies = (
+			);
+			productName = "Ayagaki-iOS";
+			productReference = 59CC35E4617B7E5707751C58 /* Ayagaki-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4D33AD37446D4D0E36DB1A0D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					D90DFF95EC87981C0E09FF4F = {
+						DevelopmentTeam = LV3H7Q68W6;
+						ProvisioningStyle = Automatic;
+					};
+					E6AE24DAFC62BB037E261937 = {
+						DevelopmentTeam = LV3H7Q68W6;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 2874B7AF8D66D407F2AA140F /* Build configuration list for PBXProject "Ayagaki" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 31A5BD3E0D0FE9321868405A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 88E80A8B835F057CCC0DF7FA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E6AE24DAFC62BB037E261937 /* Ayagaki-iOS */,
+				D90DFF95EC87981C0E09FF4F /* Ayagaki-macOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C6DD1CA4B81383D95E4B7754 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EB0B26ADBF801BDA9F653914 /* AyagakiApp.swift in Sources */,
+				9DE6E6BCA47ED068B4EC6350 /* AyagakiMCPHandler.swift in Sources */,
+				A033F771B74D6480375F55D8 /* BraidModel.swift in Sources */,
+				385CE4602E7A6D7C967F5C89 /* ColorUtil.swift in Sources */,
+				69CC6850FDCDAEC5D20A8AFB /* ContentView.swift in Sources */,
+				F349190814F3B564C52D4FF2 /* Design+CoreData.swift in Sources */,
+				DD0A008DA0AA8E3AF608C22A /* DesignStore.swift in Sources */,
+				BCA5B807E391D1110B686931 /* EditorView.swift in Sources */,
+				942C2A71C020C03A0BE822D1 /* EditorViewModel.swift in Sources */,
+				D55DF18BEED63A8C5599528A /* Export.swift in Sources */,
+				CC9A3FE9B876F9E3004A929E /* GridCanvasView.swift in Sources */,
+				6225BE536361AF46B8850F59 /* GridGeometry.swift in Sources */,
+				9498F26A9739AD1CBA4F68E6 /* HTTPServer.swift in Sources */,
+				CB8C065ED9D6D0E86D76FC46 /* MCPServerController.swift in Sources */,
+				5D3A93FA19B2236176CDE3D8 /* NotationView.swift in Sources */,
+				B94CE0F7AC1CF111FFD851CB /* Persistence.swift in Sources */,
+				066CC8325F0F75505BEE2042 /* PreviewCanvasView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C7450B767E50F59282CBFF4E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6C983D168BE6515B4BB4F017 /* AyagakiApp.swift in Sources */,
+				5A5B8843346084FC27119217 /* AyagakiMCPHandler.swift in Sources */,
+				5CE6333E5363C6FFA197A4AC /* BraidModel.swift in Sources */,
+				235A8BC183FA9C241A3B0FD5 /* ColorUtil.swift in Sources */,
+				6165E68C0CBE3B91D56C8F78 /* ContentView.swift in Sources */,
+				5186F0D9B03632DABA8103D4 /* Design+CoreData.swift in Sources */,
+				D82F57C2E012817B3D4F9222 /* DesignStore.swift in Sources */,
+				72AF522E2DC76A92F7A3FFA2 /* EditorView.swift in Sources */,
+				6C415774CF2B8159566AC7E9 /* EditorViewModel.swift in Sources */,
+				C64699DA02E0D06AE4183AC7 /* Export.swift in Sources */,
+				5A8C42299B3B7E571E72FE37 /* GridCanvasView.swift in Sources */,
+				F2048018058000F8BD6F0074 /* GridGeometry.swift in Sources */,
+				E3688DA050C78301054469AA /* HTTPServer.swift in Sources */,
+				A05CAE46FC7358A40641EE01 /* MCPServerController.swift in Sources */,
+				C47C20D989F1B7C2FE9A5E3B /* NotationView.swift in Sources */,
+				8B6405BD78947521370FEDC6 /* Persistence.swift in Sources */,
+				83C699E596DF522E42725D0F /* PreviewCanvasView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2B29FEC10A9900F072A6F631 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = LV3H7Q68W6;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		60BB1AE1D92420DCA0CB3E39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Ayagaki-iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Ayagaki-iOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tento.ayagaki;
+				PRODUCT_NAME = Ayagaki;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		77990E1AEC2D0A55B3F8E8DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = LV3H7Q68W6;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		79DB52B23F98FEA1DA8B8FCC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Ayagaki-macOS.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "Ayagaki-macOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tento.ayagaki;
+				PRODUCT_NAME = Ayagaki;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		961E2E762D1DCEDC6829D9A1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Ayagaki-iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Ayagaki-iOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tento.ayagaki;
+				PRODUCT_NAME = Ayagaki;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B6747438EF1B4900B645744A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Ayagaki-macOS.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "Ayagaki-macOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tento.ayagaki;
+				PRODUCT_NAME = Ayagaki;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14711230352DA3A0F9AEAC4C /* Build configuration list for PBXNativeTarget "Ayagaki-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60BB1AE1D92420DCA0CB3E39 /* Debug */,
+				961E2E762D1DCEDC6829D9A1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		20956A11034348ACC57C35BF /* Build configuration list for PBXNativeTarget "Ayagaki-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				79DB52B23F98FEA1DA8B8FCC /* Debug */,
+				B6747438EF1B4900B645744A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2874B7AF8D66D407F2AA140F /* Build configuration list for PBXProject "Ayagaki" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				77990E1AEC2D0A55B3F8E8DC /* Debug */,
+				2B29FEC10A9900F072A6F631 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4D33AD37446D4D0E36DB1A0D /* Project object */;
+}

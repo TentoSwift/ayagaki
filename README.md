@@ -18,6 +18,23 @@
 
 ※記号体系は簡易版です。お手持ちの綾書資料と突き合わせて読み替えてください。
 
-## 開発
+## ネイティブアプリ（macOS / iOS / iPadOS）
+
+`apple/` に SwiftUI 製のネイティブアプリがあります（iOS 16+ / macOS 13+）。
+
+- デザインは Core Data + CloudKit（`NSPersistentCloudKitContainer`）で保存し、iCloud で端末間同期
+- Web 版と同じ JSON 形式の書き出し / 読み込みに対応（Web ↔ アプリでデザインを行き来できる）
+- PDF 手順書の書き出し
+- **MCP サーバ内蔵（macOS 版）**: `127.0.0.1:53536/mcp` で待機し、Claude などの MCP クライアントから
+  デザインの作成・塗り・交換記号の取得ができる
+  （登録例: `claude mcp add --transport http ayagaki http://127.0.0.1:53536/mcp`）
+
+```bash
+cd apple
+xcodegen generate   # Ayagaki.xcodeproj を生成
+# スキーム: Ayagaki-iOS / Ayagaki-macOS
+```
+
+## 開発（Web 版）
 
 単一の `index.html`（依存ライブラリなし）。ローカルで開くだけで動きます。
