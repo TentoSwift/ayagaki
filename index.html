@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>綾書エディタ — 二枚安田組</title>
+<style>
+  :root {
+    --bg: #f5f2e8;
+    --panel: #ffffff;
+    --border: #d8d2c0;
+    --text: #3a352a;
+    --accent: #7a6a4a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 14px;
+  }
+  header {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: #8a8270; font-size: 12px; }
+  .layout {
+    display: grid; grid-template-columns: minmax(380px, auto) 1fr;
+    gap: 16px; padding: 16px; align-items: start;
+  }
+  @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+
+  .gridPane {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: calc(100vh - 90px);
+  }
+  .sidePane { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
+
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .row label { font-size: 13px; }
+  select, input[type="number"], input[type="text"] {
+    font-size: 13px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px;
+    background: #fff; color: var(--text);
+  }
+  input[type="number"] { width: 64px; }
+  button {
+    font-size: 13px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; color: var(--text); cursor: pointer;
+  }
+  button:hover { background: #f3efe4; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { background: #695a3d; }
+
+  .palette { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 5px 7px; border: 2px solid transparent; border-radius: 8px; cursor: pointer;
+    user-select: none; -webkit-user-select: none;
+  }
+  .swatch.selected { border-color: var(--accent); background: #f3efe4; }
+  .swatch input[type="color"] {
+    width: 34px; height: 28px; border: 1px solid var(--border); border-radius: 5px;
+    padding: 0; background: none; cursor: pointer;
+  }
+  .swatch span { font-size: 11px; }
+
+  svg.grid { display: block; touch-action: none; }
+  svg.grid polygon.cell { cursor: crosshair; }
+  svg.grid polygon.cell.rowHi { stroke: #e0392b; stroke-width: 1.6; }
+  svg.grid text.num { font-size: 9px; fill: #9a927e; user-select: none; }
+
+  .notation { max-height: 320px; overflow: auto; }
+  table.nota { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.nota th, table.nota td { border: 1px solid #e4dfcf; padding: 3px 6px; text-align: left; }
+  table.nota th { background: #f3efe4; font-weight: 600; }
+  table.nota td.seg { white-space: nowrap; color: var(--accent); font-weight: 600; }
+  table.nota tr:hover td { background: #fbf8ee; }
+
+  .previewWrap { overflow: auto; max-height: 340px; text-align: center; }
+
+  .hint { font-size: 11.5px; color: #8a8270; line-height: 1.6; margin-top: 8px; }
+
+  .fileRow input[type="file"] { display: none; }
+
+  /* ===== 印刷 ===== */
+  @media print {
+    header, .sidePane .card.controlsCard, .noprint { display: none !important; }
+    body { background: #fff; }
+    .layout { display: block; padding: 0; }
+    .gridPane { max-height: none; overflow: visible; border: none; }
+    .sidePane { position: static; }
+    .card { border: none; page-break-inside: avoid; }
+    .notation { max-height: none; overflow: visible; }
+    .previewWrap { max-height: none; overflow: visible; }
+    .printTitle { display: block !important; font-size: 16px; font-weight: bold; margin: 0 0 8px; }
+  }
+  .printTitle { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>綾書エディタ</h1>
+  <span class="sub">二枚安田組（60玉 / 68玉）— 模様を塗ると交換記号を自動生成します</span>
+</header>
+
+<div class="layout">
+  <div class="gridPane">
+    <div class="printTitle" id="printTitle"></div>
+    <svg class="grid" id="gridSvg"></svg>
+  </div>
+
+  <div class="sidePane">
+    <div class="card controlsCard">
+      <h2>設定・道具</h2>
+      <div class="row">
+        <label>玉数
+          <select id="tamaSel">
+            <option value="60">60玉（片面15目）</option>
+            <option value="68">68玉（片面17目）</option>
+          </select>
+        </label>
+        <label>段数 <input type="number" id="rowsInp" min="4" max="120" value="40"></label>
+        <label><input type="checkbox" id="symChk"> 左右対称に塗る</label>
+      </div>
+      <div class="row">
+        <span>色：</span>
+        <div class="palette" id="palette"></div>
+      </div>
+      <div class="row">
+        <button id="undoBtn">↩︎ 元に戻す</button>
+        <button id="clearBtn">全消去</button>
+        <label>記号の読み方向
+          <select id="dirSel">
+            <option value="edge">端 → 中央</option>
+            <option value="center">中央 → 端</option>
+          </select>
+        </label>
+      </div>
+      <div class="row fileRow">
+        <input type="text" id="nameInp" placeholder="デザイン名" style="width: 140px">
+        <button id="saveBtn" class="primary">保存</button>
+        <select id="loadSel"><option value="">保存済みを開く…</option></select>
+        <button id="delBtn">削除</button>
+      </div>
+      <div class="row fileRow">
+        <button id="exportBtn">JSON書き出し</button>
+        <button id="importBtn">JSON読み込み</button>
+        <input type="file" id="importFile" accept=".json,application/json">
+        <button id="printBtn">印刷 / PDF</button>
+      </div>
+      <div class="hint">
+        マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
+        記号の意味 — <b>ナミn</b>：n目そのまま組む／<b>上n</b>：色糸をn目交換して表に浮かせる。<br>
+        ※記号体系は簡易版です。お手元の書籍（4-13 綾書2）と突き合わせて読み替えてください。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>交換記号（自動生成）</h2>
+      <div class="notation" id="notation"></div>
+    </div>
+
+    <div class="card">
+      <h2>仕上がりプレビュー（2リピート）</h2>
+      <div class="previewWrap"><svg id="previewSvg"></svg></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ===== 状態 ===== */
+const TAMA_TO_COLS = { 60: 15, 68: 17 };
+const CELL = 10;               // 菱形の半径（横=縦、45°）
+const MARGIN = 8;
+const NUM_W = 26;              // 段番号の帯幅
+const LS_AUTOSAVE = "ayagaki-autosave";
+const LS_DESIGNS = "ayagaki-designs";
+
+let app = {
+  tama: 60,
+  rows: 40,
+  palette: ["#dfe6c4", "#a2653a", "#3f5da8", "#c8b23c"],
+  paletteNames: ["地", "柄1", "柄2", "柄3"],
+  cur: 1,
+  sym: false,
+  readDir: "edge",
+  name: "",
+  cells: null,   // { L: rows×N, R: rows×N }  値 = パレット番号（0=地）
+};
+
+function cols() { return TAMA_TO_COLS[app.tama]; }
+
+function emptyCells(rows, n) {
+  const mk = () => Array.from({ length: rows }, () => new Array(n).fill(0));
+  return { L: mk(), R: mk() };
+}
+
+function resizeCells(old, rows, n) {
+  const nc = emptyCells(rows, n);
+  if (old) {
+    for (const s of ["L", "R"]) {
+      for (let r = 0; r < Math.min(rows, old[s].length); r++) {
+        for (let d = 0; d < Math.min(n, old[s][r].length); d++) nc[s][r][d] = old[s][r][d];
+      }
+    }
+  }
+  return nc;
+}
+
+/* ===== 幾何 =====
+   d = 中央からの距離（0 = 中央寄り, N-1 = 外端）
+   各段は中央が最も低い「∨」型（高台の組み口の形） */
+function geo() {
+  const N = cols();
+  const cx = MARGIN + NUM_W + (N + 1) * CELL;
+  const y0 = MARGIN + N * CELL;
+  const w = 2 * ((N + 1) * CELL) + 2 * (MARGIN + NUM_W);
+  const h = y0 + (app.rows - 1) * 2 * CELL + CELL + MARGIN;
+  return { N, cx, y0, w, h };
+}
+
+function cellCenter(g, side, r, d) {
+  const dx = CELL + d * CELL;
+  const x = side === "R" ? g.cx + dx : g.cx - dx;
+  const y = g.y0 + r * 2 * CELL - d * CELL;
+  return { x, y };
+}
+
+function diamondPoints(x, y) {
+  return `${x},${y - CELL} ${x + CELL},${y} ${x},${y + CELL} ${x - CELL},${y}`;
+}
+
+/* ===== グリッド描画 ===== */
+const gridSvg = document.getElementById("gridSvg");
+let cellIndex = {};  // "side-r-d" -> polygon要素
+
+function renderGrid() {
+  const g = geo();
+  gridSvg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
+  gridSvg.setAttribute("width", g.w);
+  gridSvg.setAttribute("height", g.h);
+  gridSvg.innerHTML = "";
+  cellIndex = {};
+  const frag = document.createDocumentFragment();
+  const NS = "http://www.w3.org/2000/svg";
+
+  for (let r = 0; r < app.rows; r++) {
+    for (const side of ["L", "R"]) {
+      for (let d = 0; d < g.N; d++) {
+        const c = cellCenter(g, side, r, d);
+        const p = document.createElementNS(NS, "polygon");
+        p.setAttribute("points", diamondPoints(c.x, c.y));
+        p.setAttribute("class", "cell");
+        p.setAttribute("stroke", "#b8b096");
+        p.setAttribute("stroke-width", "0.6");
+        p.dataset.side = side; p.dataset.r = r; p.dataset.d = d;
+        p.setAttribute("fill", app.palette[app.cells[side][r][d]] || app.palette[0]);
+        cellIndex[`${side}-${r}-${d}`] = p;
+        frag.appendChild(p);
+      }
+    }
+    // 段番号（両端）
+    const outer = cellCenter(g, "L", r, g.N - 1);
+    for (const [x, anchor] of [[MARGIN + NUM_W - 6, "end"], [g.w - MARGIN - NUM_W + 6, "start"]]) {
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("x", x); t.setAttribute("y", outer.y + 3);
+      t.setAttribute("text-anchor", anchor);
+      t.setAttribute("class", "num");
+      t.textContent = r + 1;
+      frag.appendChild(t);
+    }
+  }
+  // 中央線（ジグザグの目印）
+  const line = document.createElementNS(NS, "line");
+  line.setAttribute("x1", g.cx); line.setAttribute("x2", g.cx);
+  line.setAttribute("y1", g.y0 - CELL); line.setAttribute("y2", g.y0 + (app.rows - 1) * 2 * CELL + CELL);
+  line.setAttribute("stroke", "#9a927e"); line.setAttribute("stroke-width", "0.5");
+  line.setAttribute("stroke-dasharray", "3 2");
+  frag.appendChild(line);
+
+  gridSvg.appendChild(frag);
+}
+
+function updateCellFill(side, r, d) {
+  const p = cellIndex[`${side}-${r}-${d}`];
+  if (p) p.setAttribute("fill", app.palette[app.cells[side][r][d]] || app.palette[0]);
+}
+
+/* ===== 塗り操作 ===== */
+let painting = false;
+let undoStack = [];
+
+function pushUndo() {
+  undoStack.push(JSON.stringify(app.cells));
+  if (undoStack.length > 100) undoStack.shift();
+}
+
+function paintCell(side, r, d) {
+  const v = app.cur;
+  let changed = false;
+  if (app.cells[side][r][d] !== v) { app.cells[side][r][d] = v; updateCellFill(side, r, d); changed = true; }
+  if (app.sym) {
+    const other = side === "L" ? "R" : "L";
+    if (app.cells[other][r][d] !== v) { app.cells[other][r][d] = v; updateCellFill(other, r, d); changed = true; }
+  }
+  if (changed) scheduleDerived();
+}
+
+function cellFromEvent(e) {
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (el && el.classList && el.classList.contains("cell")) {
+    return { side: el.dataset.side, r: +el.dataset.r, d: +el.dataset.d };
+  }
+  return null;
+}
+
+gridSvg.addEventListener("pointerdown", (e) => {
+  const c = cellFromEvent(e);
+  if (!c) return;
+  e.preventDefault();
+  pushUndo();
+  painting = true;
+  gridSvg.setPointerCapture(e.pointerId);
+  paintCell(c.side, c.r, c.d);
+});
+gridSvg.addEventListener("pointermove", (e) => {
+  if (!painting) return;
+  const c = cellFromEvent(e);
+  if (c) paintCell(c.side, c.r, c.d);
+});
+const stopPaint = () => { if (painting) { painting = false; scheduleAutosave(); } };
+gridSvg.addEventListener("pointerup", stopPaint);
+gridSvg.addEventListener("pointercancel", stopPaint);
+
+/* ===== パレットUI ===== */
+const paletteDiv = document.getElementById("palette");
+function renderPalette() {
+  paletteDiv.innerHTML = "";
+  app.palette.forEach((color, i) => {
+    const sw = document.createElement("div");
+    sw.className = "swatch" + (app.cur === i ? " selected" : "");
+    const inp = document.createElement("input");
+    inp.type = "color"; inp.value = color;
+    inp.addEventListener("input", () => {
+      app.palette[i] = inp.value;
+      repaintAll(); scheduleDerived(); scheduleAutosave();
+    });
+    inp.addEventListener("click", (e) => { app.cur = i; renderPalette(); e.stopPropagation(); });
+    const label = document.createElement("span");
+    label.textContent = i === 0 ? "地（消す）" : app.paletteNames[i];
+    sw.appendChild(inp); sw.appendChild(label);
+    sw.addEventListener("click", () => { app.cur = i; renderPalette(); });
+    paletteDiv.appendChild(sw);
+  });
+}
+
+function repaintAll() {
+  for (const key in cellIndex) {
+    const [side, r, d] = key.split("-");
+    updateCellFill(side, +r, +d);
+  }
+}
+
+/* ===== 交換記号の生成 =====
+   各段・各半面：外端→中央（設定で反転）にマスを走査し、
+   地（0）の連続 → ナミn ／ 柄（>0）の連続 → 上n として列挙 */
+function rowNotation(side, r) {
+  const N = cols();
+  const seq = [];
+  const idx = [];
+  for (let k = 0; k < N; k++) idx.push(app.readDir === "edge" ? N - 1 - k : k); // d列の走査順
+  for (const d of idx) seq.push(app.cells[side][r][d] > 0 ? 1 : 0);
+
+  const runs = [];
+  for (const v of seq) {
+    if (runs.length && runs[runs.length - 1].v === v) runs[runs.length - 1].n++;
+    else runs.push({ v, n: 1 });
+  }
+  if (runs.length === 1 && runs[0].v === 0) return "ナミ";
+  return runs.map(x => (x.v === 0 ? `ナミ${x.n}` : `上${x.n}`)).join("・");
+}
+
+const notationDiv = document.getElementById("notation");
+function renderNotation() {
+  const rows = [];
+  for (let r = 0; r < app.rows; r++) rows.push({ L: rowNotation("L", r), R: rowNotation("R", r) });
+
+  // 連続する同一段をまとめる
+  const groups = [];
+  for (let r = 0; r < rows.length; r++) {
+    const last = groups[groups.length - 1];
+    if (last && last.L === rows[r].L && last.R === rows[r].R) last.to = r;
+    else groups.push({ from: r, to: r, L: rows[r].L, R: rows[r].R });
+  }
+
+  const tbl = document.createElement("table");
+  tbl.className = "nota";
+  tbl.innerHTML = "<tr><th>段</th><th>左半面</th><th>右半面</th></tr>";
+  for (const gp of groups) {
+    const tr = document.createElement("tr");
+    const seg = gp.from === gp.to ? `${gp.from + 1}` : `${gp.from + 1}〜${gp.to + 1}`;
+    tr.innerHTML = `<td class="seg">${seg}</td><td>${gp.L}</td><td>${gp.R}</td>`;
+    tr.addEventListener("mouseenter", () => highlightRows(gp.from, gp.to, true));
+    tr.addEventListener("mouseleave", () => highlightRows(gp.from, gp.to, false));
+    tbl.appendChild(tr);
+  }
+  notationDiv.innerHTML = "";
+  notationDiv.appendChild(tbl);
+}
+
+function highlightRows(from, to, on) {
+  const N = cols();
+  for (let r = from; r <= to; r++)
+    for (const side of ["L", "R"])
+      for (let d = 0; d < N; d++) {
+        const p = cellIndex[`${side}-${r}-${d}`];
+        if (p) p.classList.toggle("rowHi", on);
+      }
+}
+
+/* ===== 仕上がりプレビュー ===== */
+const previewSvg = document.getElementById("previewSvg");
+function renderPreview() {
+  const N = cols();
+  const S = 5; // プレビューの菱形半径
+  const repeats = 2;
+  const totalRows = app.rows * repeats;
+  const cx = (N + 1) * S + 4;
+  const y0 = N * S + 4;
+  const w = 2 * ((N + 1) * S) + 8;
+  const h = y0 + (totalRows - 1) * 2 * S + S + 4;
+  previewSvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  previewSvg.setAttribute("width", w * 1.4);
+  previewSvg.setAttribute("height", h * 1.4);
+  previewSvg.innerHTML = "";
+  const NS = "http://www.w3.org/2000/svg";
+  const frag = document.createDocumentFragment();
+
+  const addDiamond = (x, y, color) => {
+    const p = document.createElementNS(NS, "polygon");
+    p.setAttribute("points", `${x},${y - S} ${x + S},${y} ${x},${y + S} ${x - S},${y}`);
+    p.setAttribute("fill", color);
+    p.setAttribute("stroke", shade(color, -18));
+    p.setAttribute("stroke-width", "0.3");
+    frag.appendChild(p);
+  };
+  for (let rr = 0; rr < totalRows; rr++) {
+    const r = rr % app.rows;
+    for (const side of ["L", "R"]) {
+      for (let d = 0; d < N; d++) {
+        const dx = S + d * S;
+        const x = side === "R" ? cx + dx : cx - dx;
+        const y = y0 + rr * 2 * S - d * S;
+        let color = app.palette[app.cells[side][r][d]] || app.palette[0];
+        // 糸の向きによる艶の違いを簡易表現（左右で明度を少し変える）
+        if (side === "L") color = shade(color, -6);
+        addDiamond(x, y, color);
+      }
+    }
+    // 中央の隙間を埋める（隣接4マスの多数決で着色）
+    const rNext = (rr + 1) % app.rows;
+    const around = [app.cells.L[r][0], app.cells.R[r][0], app.cells.L[rNext][0], app.cells.R[rNext][0]];
+    const counts = {};
+    for (const v of around) counts[v] = (counts[v] || 0) + 1;
+    const val = +Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    if (rr < totalRows - 1) addDiamond(cx, y0 + rr * 2 * S + S, app.palette[val] || app.palette[0]);
+  }
+  previewSvg.appendChild(frag);
+}
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, v + amt));
+  const r = f(n >> 16), g = f((n >> 8) & 255), b = f(n & 255);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
+/* ===== 派生表示の更新（間引き） ===== */
+let derivedTimer = null;
+function scheduleDerived() {
+  clearTimeout(derivedTimer);
+  derivedTimer = setTimeout(() => { renderNotation(); renderPreview(); }, 120);
+}
+
+/* ===== 保存・読み込み ===== */
+function snapshot() {
+  return {
+    v: 1, name: app.name, tama: app.tama, rows: app.rows,
+    palette: app.palette, cells: app.cells, readDir: app.readDir,
+  };
+}
+function restore(s) {
+  app.tama = TAMA_TO_COLS[s.tama] ? s.tama : 60;
+  app.rows = Math.max(4, Math.min(120, s.rows || 40));
+  app.palette = Array.isArray(s.palette) && s.palette.length === 4 ? s.palette : app.palette;
+  app.readDir = s.readDir === "center" ? "center" : "edge";
+  app.name = s.name || "";
+  app.cells = resizeCells(s.cells, app.rows, cols());
+  syncControls();
+  fullRender();
+}
+
+let autosaveTimer = null;
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_AUTOSAVE, JSON.stringify(snapshot())); } catch (e) {}
+  }, 400);
+}
+
+function loadDesignList() {
+  try { return JSON.parse(localStorage.getItem(LS_DESIGNS) || "{}"); } catch (e) { return {}; }
+}
+function renderLoadSel() {
+  const sel = document.getElementById("loadSel");
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">保存済みを開く…</option>';
+  for (const name of Object.keys(loadDesignList()).sort()) {
+    const o = document.createElement("option");
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  }
+  sel.value = cur;
+}
+
+/* ===== コントロール ===== */
+function syncControls() {
+  document.getElementById("tamaSel").value = app.tama;
+  document.getElementById("rowsInp").value = app.rows;
+  document.getElementById("symChk").checked = app.sym;
+  document.getElementById("dirSel").value = app.readDir;
+  document.getElementById("nameInp").value = app.name;
+  renderPalette();
+}
+
+function fullRender() {
+  document.getElementById("printTitle").textContent =
+    `綾書 — ${app.tama}玉二枚安田組${app.name ? "「" + app.name + "」" : ""}`;
+  renderGrid();
+  renderNotation();
+  renderPreview();
+}
+
+document.getElementById("tamaSel").addEventListener("change", (e) => {
+  pushUndo();
+  app.tama = +e.target.value;
+  app.cells = resizeCells(app.cells, app.rows, cols());
+  fullRender(); scheduleAutosave();
+});
+document.getElementById("rowsInp").addEventListener("change", (e) => {
+  const v = Math.max(4, Math.min(120, +e.target.value || 40));
+  e.target.value = v;
+  pushUndo();
+  app.rows = v;
+  app.cells = resizeCells(app.cells, app.rows, cols());
+  fullRender(); scheduleAutosave();
+});
+document.getElementById("symChk").addEventListener("change", (e) => { app.sym = e.target.checked; });
+document.getElementById("dirSel").addEventListener("change", (e) => {
+  app.readDir = e.target.value; renderNotation(); scheduleAutosave();
+});
+document.getElementById("undoBtn").addEventListener("click", () => {
+  const s = undoStack.pop();
+  if (!s) return;
+  app.cells = resizeCells(JSON.parse(s), app.rows, cols());
+  repaintAll(); scheduleDerived(); scheduleAutosave();
+});
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if (!confirm("すべてのマスを消去しますか？")) return;
+  pushUndo();
+  app.cells = emptyCells(app.rows, cols());
+  repaintAll(); scheduleDerived(); scheduleAutosave();
+});
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+    e.preventDefault();
+    document.getElementById("undoBtn").click();
+  }
+});
+
+document.getElementById("nameInp").addEventListener("input", (e) => { app.name = e.target.value; });
+document.getElementById("saveBtn").addEventListener("click", () => {
+  const name = app.name.trim();
+  if (!name) { alert("デザイン名を入れてください"); return; }
+  const list = loadDesignList();
+  list[name] = snapshot();
+  try { localStorage.setItem(LS_DESIGNS, JSON.stringify(list)); } catch (e) { alert("保存できませんでした"); return; }
+  renderLoadSel();
+  document.getElementById("loadSel").value = name;
+});
+document.getElementById("loadSel").addEventListener("change", (e) => {
+  const name = e.target.value;
+  if (!name) return;
+  const s = loadDesignList()[name];
+  if (s) { pushUndo(); restore(s); scheduleAutosave(); }
+});
+document.getElementById("delBtn").addEventListener("click", () => {
+  const sel = document.getElementById("loadSel");
+  const name = sel.value;
+  if (!name) { alert("削除するデザインを選んでください"); return; }
+  if (!confirm(`「${name}」を削除しますか？`)) return;
+  const list = loadDesignList();
+  delete list[name];
+  localStorage.setItem(LS_DESIGNS, JSON.stringify(list));
+  renderLoadSel();
+});
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(snapshot(), null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ayagaki-${(app.name.trim() || "design")}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  file.text().then((txt) => {
+    try {
+      const s = JSON.parse(txt);
+      if (!s.cells) throw new Error();
+      pushUndo(); restore(s); scheduleAutosave();
+    } catch (err) { alert("読み込めないファイルです"); }
+  });
+});
+document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+/* ===== 起動 ===== */
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_AUTOSAVE)); } catch (e) {}
+  if (saved && saved.cells) {
+    restore(saved);
+  } else {
+    app.cells = emptyCells(app.rows, cols());
+    syncControls();
+    fullRender();
+  }
+  renderLoadSel();
+})();
+</script>
+</body>
+</html>
