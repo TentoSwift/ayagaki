@@ -13,17 +13,15 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selection) {
-                ForEach(designs, id: \.objectID) { design in
-                    DesignRow(design: design)
-                        .tag(design.objectID)
-                        .contextMenu {
-                            Button("削除", role: .destructive) { delete(design) }
-                        }
-                }
-                .onDelete { offsets in
-                    for i in offsets { delete(designs[i]) }
-                }
+            List(designs, id: \.objectID, selection: $selection) { design in
+                DesignRow(design: design)
+                    .id(design.objectID)  // セル再利用で別デザインの内容が残らないよう明示
+                    .contextMenu {
+                        Button("削除", role: .destructive) { delete(design) }
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button("削除", role: .destructive) { delete(design) }
+                    }
             }
             .navigationTitle("綾書")
             #if os(macOS)

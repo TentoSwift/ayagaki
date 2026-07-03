@@ -18,6 +18,7 @@ final class EditorViewModel: ObservableObject {
     private var undoStack: [CellGrid] = []
     private var strokeActive = false
     private var saveTask: Task<Void, Never>?
+    private var dirty = false
 
     var cols: Int { BraidSpec.cols(forTama: tama) }
     var canUndo: Bool { !undoStack.isEmpty }
@@ -171,6 +172,7 @@ final class EditorViewModel: ObservableObject {
     // MARK: 保存（デバウンス）
 
     private func scheduleSave() {
+        dirty = true
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 400_000_000)
@@ -185,10 +187,12 @@ final class EditorViewModel: ObservableObject {
     }
 
     private func performSave() {
-        guard !design.isDeleted, design.managedObjectContext != nil else { return }
+        // 実際に編集されたときだけ保存する（開いただけで updatedAt を進めない）
+        guard dirty, !design.isDeleted, design.managedObjectContext != nil else { return }
         design.apply(snapshot: snapshotValue)
         do {
             try context.save()
+            dirty = false
         } catch {
             NSLog("Ayagaki: 保存に失敗: \(error.localizedDescription)")
         }
