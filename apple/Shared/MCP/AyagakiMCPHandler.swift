@@ -123,6 +123,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 セル値: 0=地（ナミ）、1〜3=柄色。paint の pos は 1=外端 … colsPerSide=中央。
                 同じ段のセルは実際の組紐では斜めのラインになります。模様の設計は paint（矩形塗り）か set_cells（全置換）で行い、
                 get_notation で組むときの交換記号（ナミn=n目そのまま／上n=n目交換して浮かせる）を取得できます。
+                export_pdf で手順書 PDF をファイルに書き出し、返されたパスから読み取れます。
                 """,
             ]
         case "ping":
@@ -195,6 +196,9 @@ final class AyagakiMCPHandler: @unchecked Sendable {
             }
             return try store.setCells(id: try requiredID(arguments), cellsL: l, cellsR: r)
 
+        case "export_pdf":
+            return try await exportPDF(arguments)
+
         case "clear_cells":
             return try store.clearCells(id: try requiredID(arguments))
 
@@ -204,6 +208,35 @@ final class AyagakiMCPHandler: @unchecked Sendable {
         default:
             throw MCPError.methodNotFound("tool: \(name)")
         }
+    }
+
+    /// PDF 手順書を生成してファイルに保存し、パスを返す
+    private func exportPDF(_ arguments: [String: Any]) async throws -> Any {
+        let id = try requiredID(arguments)
+        let (snapshot, name) = try store.snapshotAndName(id: id)
+        guard let pdf = renderPDF(snapshot: snapshot, title: pdfTitle(for: snapshot, name: name)) else {
+            throw StoreError("PDF の生成に失敗しました")
+        }
+
+        let url: URL
+        if let p = arguments["path"] as? String, !p.isEmpty {
+            url = URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
+        } else {
+            let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+            let safeName = name.replacingOccurrences(of: "/", with: "-")
+            url = downloads.appendingPathComponent("ayagaki-\(safeName).pdf")
+        }
+        do {
+            try pdf.write(to: url)
+        } catch {
+            throw StoreError("書き込みに失敗しました（サンドボックスの制約により ~/Downloads 以外へは保存できない場合があります）: \(error.localizedDescription)")
+        }
+        // サンドボックスのコンテナ表記を実際のユーザーパスに直して返す
+        var path = url.path
+        if let range = path.range(of: "/Library/Containers/com.tento.ayagaki/Data") {
+            path.removeSubrange(range)
+        }
+        return ["ok": true, "path": path, "bytes": pdf.count]
     }
 
     private func requiredID(_ arguments: [String: Any]) throws -> String {
@@ -336,6 +369,18 @@ final class AyagakiMCPHandler: @unchecked Sendable {
             "inputSchema": [
                 "type": "object",
                 "properties": ["id": ["type": "string", "description": "デザイン ID（必須）"]],
+                "required": ["id"],
+            ],
+        ],
+        [
+            "name": "export_pdf",
+            "description": "デザインの手順書（綾書グリッド＋交換記号）を PDF ファイルに書き出し、保存先のパスとサイズを返す。既定の保存先は ~/Downloads/ayagaki-<デザイン名>.pdf。返されたパスのファイルを読めば PDF を取得できる。",
+            "inputSchema": [
+                "type": "object",
+                "properties": [
+                    "id": ["type": "string", "description": "デザイン ID（必須）"],
+                    "path": ["type": "string", "description": "保存先の絶対パス（省略時は ~/Downloads/ayagaki-<デザイン名>.pdf）。サンドボックスの制約で書けない場所もある"],
+                ],
                 "required": ["id"],
             ],
         ],

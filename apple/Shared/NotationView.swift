@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// 交換記号の一覧（段グループ化）。タップで該当段をグリッド上でハイライト。
-struct NotationView: View {
-    @ObservedObject var vm: EditorViewModel
-    var interactive = true
+/// 交換記号の表（値ベース）。エディタでも PDF 手順書でも使う。
+struct NotationTable: View {
+    var groups: [NotationGroup]
+    var selected: ClosedRange<Int>? = nil
+    var onTap: ((NotationGroup) -> Void)? = nil
 
     var body: some View {
-        let groups = vm.notationGroups
         VStack(spacing: 0) {
             headerRow
             Divider()
             ForEach(groups) { g in
-                let selected = interactive && vm.highlighted == g.from...g.to
+                let isSelected = selected == g.from...g.to
                 HStack(alignment: .top, spacing: 8) {
                     Text(g.label)
                         .font(.caption.weight(.semibold))
@@ -26,13 +26,9 @@ struct NotationView: View {
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
-                .background(selected ? Color.red.opacity(0.12) : Color.clear)
+                .background(isSelected ? Color.red.opacity(0.12) : Color.clear)
                 .contentShape(Rectangle())
-                .onTapGesture {
-                    guard interactive else { return }
-                    let range = g.from...g.to
-                    vm.highlighted = (vm.highlighted == range) ? nil : range
-                }
+                .onTapGesture { onTap?(g) }
                 Divider()
             }
         }
@@ -48,5 +44,21 @@ struct NotationView: View {
         .foregroundColor(.secondary)
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
+    }
+}
+
+/// エディタ用ラッパ。タップで該当段をグリッド上でハイライトする。
+struct NotationView: View {
+    @ObservedObject var vm: EditorViewModel
+    var interactive = true
+
+    var body: some View {
+        NotationTable(
+            groups: vm.notationGroups,
+            selected: interactive ? vm.highlighted : nil,
+            onTap: interactive ? { g in
+                let range = g.from...g.to
+                vm.highlighted = (vm.highlighted == range) ? nil : range
+            } : nil)
     }
 }

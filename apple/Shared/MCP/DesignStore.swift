@@ -51,6 +51,14 @@ final class DesignStore: @unchecked Sendable {
         }
     }
 
+    /// PDF 書き出し用にスナップショットと表示名を取り出す
+    func snapshotAndName(id: String) throws -> (snapshot: DesignSnapshot, name: String) {
+        try context.performAndWait {
+            let design = try find(id)
+            return (design.snapshot, design.displayName)
+        }
+    }
+
     // MARK: - 作成・更新
 
     func create(name: String, tama: Int?, rows: Int?) throws -> [String: Any] {

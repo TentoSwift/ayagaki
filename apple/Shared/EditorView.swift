@@ -218,7 +218,9 @@ struct EditorView: View {
                 Button("JSON 読み込み") { importingJSON = true }
                 Divider()
                 Button("PDF 手順書を書き出し") {
-                    if let data = renderPDF(vm: vm) {
+                    let snapshot = vm.snapshotValue
+                    if let data = renderPDF(snapshot: snapshot,
+                                            title: pdfTitle(for: snapshot, name: vm.design.displayName)) {
                         pdfDoc = PDFFile(data: data)
                         exportingPDF = true
                     }
