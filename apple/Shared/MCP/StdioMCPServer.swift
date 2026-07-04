@@ -8,7 +8,12 @@ import Foundation
 enum StdioMCPServer {
     static func run() -> Never {
         let persistence = PersistenceController.shared
-        let handler = AyagakiMCPHandler(store: DesignStore(context: persistence.container.viewContext))
+        // main キュー（dispatchMain）上で保存すると履歴書き込みとデッドロックするため、
+        // stdio では専用のバックグラウンドコンテキストを使う
+        let context = persistence.container.newBackgroundContext()
+        context.transactionAuthor = "mcp-stdio"
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        let handler = AyagakiMCPHandler(store: DesignStore(context: context))
         let stdout = FileHandle.standardOutput
 
         let thread = Thread {

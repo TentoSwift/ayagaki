@@ -156,25 +156,25 @@ final class AyagakiMCPHandler: @unchecked Sendable {
     private func invokeTool(name: String, arguments: [String: Any]) async throws -> Any {
         switch name {
         case "list_designs":
-            return try await store.list()
+            return try store.list()
 
         case "get_design":
-            return try await store.get(id: try requiredID(arguments))
+            return try store.get(id: try requiredID(arguments))
 
         case "get_notation":
-            return try await store.notation(id: try requiredID(arguments))
+            return try store.notation(id: try requiredID(arguments))
 
         case "create_design":
             guard let name = arguments["name"] as? String, !name.isEmpty else {
                 throw MCPError.invalidParams("name は必須です")
             }
-            return try await store.create(
+            return try store.create(
                 name: name,
                 tama: arguments["tama"] as? Int,
                 rows: arguments["rows"] as? Int)
 
         case "update_design":
-            return try await store.update(
+            return try store.update(
                 id: try requiredID(arguments),
                 name: arguments["name"] as? String,
                 tama: arguments["tama"] as? Int,
@@ -186,20 +186,20 @@ final class AyagakiMCPHandler: @unchecked Sendable {
             guard let ops = arguments["ops"] as? [[String: Any]], !ops.isEmpty else {
                 throw MCPError.invalidParams("ops は必須です")
             }
-            return try await store.paint(id: try requiredID(arguments), ops: ops)
+            return try store.paint(id: try requiredID(arguments), ops: ops)
 
         case "set_cells":
             guard let cells = arguments["cells"] as? [String: Any],
                   let l = intPlane(cells["L"]), let r = intPlane(cells["R"]) else {
                 throw MCPError.invalidParams("cells は {L: [[Int]], R: [[Int]]} 形式で指定してください")
             }
-            return try await store.setCells(id: try requiredID(arguments), cellsL: l, cellsR: r)
+            return try store.setCells(id: try requiredID(arguments), cellsL: l, cellsR: r)
 
         case "clear_cells":
-            return try await store.clearCells(id: try requiredID(arguments))
+            return try store.clearCells(id: try requiredID(arguments))
 
         case "delete_design":
-            return try await store.delete(id: try requiredID(arguments))
+            return try store.delete(id: try requiredID(arguments))
 
         default:
             throw MCPError.methodNotFound("tool: \(name)")
