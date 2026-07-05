@@ -32,26 +32,16 @@ struct NotationTable: View {
         }
     }
 
-    /// 記号テキスト + ⬆ トグルボタン（中央で上ル）。非対話時は文字列をそのまま表示
+    /// 記号テキスト。⬆ は中央で上ル段だけに表示され、タップで切り替え
     @ViewBuilder
     private func notationCell(_ text: String, side: BraidSide, group: NotationGroup) -> some View {
         if let onToggleArrow {
-            let hasArrow = text.hasSuffix("⬆")
-            HStack(spacing: 4) {
-                Text(hasArrow ? String(text.dropLast()) : text)
-                    .font(.caption)
-                Button {
-                    onToggleArrow(group, side)
-                } label: {
-                    Text("⬆")
-                        .font(.caption.weight(.bold))
-                        .foregroundColor(hasArrow ? .primary : Color.secondary.opacity(0.25))
-                }
-                .buttonStyle(.plain)
-                .help("中央で上ル（⬆）を切り替え")
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(text)
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { onToggleArrow(group, side) }
+                .help("タップで ⬆（中央で上ル）を切り替え")
         } else {
             Text(text)
                 .font(.caption)
