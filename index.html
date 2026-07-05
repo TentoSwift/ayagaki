@@ -452,22 +452,16 @@ function sideTexts(side) {
   for (let r = 0; r < app.rows; r++) {
     const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
-    const prevRise = r > 0 && (app.cells[opp][r - 1][0] || 0) > 0;
-    // 中央の糸交換: 色を置いた段に「1」、外した段に「①」（位置1の糸の対）
-    let centerPrefix = "";
-    if (risesAtCenter && !prevRise) centerPrefix = "1 ";
-    if (!risesAtCenter && prevRise) centerPrefix = circled(1);
     let text;
     let isBridge = false;
     if (!slots.some(Boolean)) {
       if (risesAtCenter) {
-        // 中央だけで上がる段: 数えには中立（②〜n には入らない）
-        text = centerPrefix + "ナミ";
+        // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
+        text = "ナミ";
         isBridge = true;
       } else {
         // 数字は片面の目数（60玉=13、68玉=15）が上限
-        text = opRun > 0 ? centerPrefix + circledRange(2, Math.min(opRun + 2, N)) + "ナミ"
-                         : centerPrefix + "ナミ";
+        text = opRun > 0 ? circledRange(2, Math.min(opRun + 2, N)) + "ナミ" : "ナミ";
         opRun = 0;
       }
     } else {
@@ -476,7 +470,7 @@ function sideTexts(side) {
         const added = slots.filter((v, i) => v && !prev[i]).length;
         if (added >= 2) prefix = plainList(2, Math.min(opRun, N));
       }
-      text = centerPrefix + prefix + ayaName(slots);
+      text = prefix + ayaName(slots);
       opRun++;
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
