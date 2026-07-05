@@ -203,16 +203,24 @@ enum Notation {
     /// ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
-    static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil) -> [String] {
+    static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil,
+                          centerRise: [Bool]? = nil) -> [String] {
         var texts: [String] = []
-        var opRun = 0          // 連続する模様（非ナミ）段数
+        var opRun = 0          // 連続する入れかえ段数（中央で上がる段も含む）
         var prevSlots: [Bool]?
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
+            let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル（入れかえの一種）
             var text: String
             if !slots.contains(true) {
-                text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ"
-                opRun = 0
+                if risesAtCenter {
+                    // 中央だけで上がる段: 綾はナミだが入れかえとして数える
+                    text = "ナミ"
+                    opRun += 1
+                } else {
+                    text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ"
+                    opRun = 0
+                }
             } else {
                 var prefix = ""
                 if let prev = prevSlots, opRun >= 2 {
@@ -234,8 +242,11 @@ enum Notation {
         let rows = cells.L.count
         let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
         let arrowsR = (0..<rows).map { cells.hasArrow(side: .right, row: $0) }
-        let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL)
-        let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR)
+        // 中央で上がる糸の色は反対側の中央列（d=0）に置かれる
+        let riseL = (0..<rows).map { cells.R[$0].first ?? 0 > 0 }
+        let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
+        let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL)
+        let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR)
         var out: [NotationGroup] = []
         for r in 0..<lefts.count {
             if let last = out.last, last.left == lefts[r], last.right == rights[r] {
