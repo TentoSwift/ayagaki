@@ -277,7 +277,7 @@ function renderGrid() {
     }
     // ⬆（中央で上ル）の印を中央寄りの目に表示
     for (const [side, cj] of [["L", 2 * r + 1], ["R", 2 * r]]) {
-      if ((app.cells.C[cj] || 0) > 0) {
+      if ((app.cells[side][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) {
         const c = cellCenter(g, side, r, 0);
         const t = document.createElementNS(NS, "text");
         t.setAttribute("x", c.x); t.setAttribute("y", c.y + CELL * 0.38);
@@ -468,9 +468,9 @@ function sideTexts(side) {
       text = prefix + ayaName(slots);
       opRun++;
     }
-    // 中央の上ル目が塗られている段は ⬆（中央で上ル）
+    // 中央の2列（d=0）に色が置かれた段は自動で ⬆、それ以外は手動指定（C）
     const cj = side === "R" ? 2 * r : 2 * r + 1;
-    if ((app.cells.C[cj] || 0) > 0) text += "⬆";
+    if ((app.cells[side][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) text += "⬆";
     texts.push(text);
     prev = slots;
   }

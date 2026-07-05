@@ -95,8 +95,11 @@ struct CellGrid: Codable, Equatable {
         }
     }
 
-    /// その段の記号に ⬆ を付けるか（中央の上ル目が塗られているか）
+    /// その段の記号に ⬆（中央で上ル）を付けるか。
+    /// 中央の2列（d=0）に色が置かれた段は自動で ⬆、それ以外は手動指定（C）による
     func hasArrow(side: BraidSide, row: Int) -> Bool {
+        let plane = side == .right ? R : L
+        if row < plane.count, (plane[row].first ?? 0) > 0 { return true }
         guard let C else { return false }
         if C.count == L.count { return row < C.count && C[row] > 0 }  // 旧形式
         let j = side == .right ? 2 * row : 2 * row + 1
