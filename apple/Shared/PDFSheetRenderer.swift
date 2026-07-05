@@ -125,7 +125,7 @@ struct PDFSheetRenderer {
             hline(at: y, from: origin.x, width: rowsW + 2 * halfW, ctx: ctx)
         }
 
-        drawText("上n：n目入れかえて色糸を浮かせる ／ 下n：n目そのまま ／ 丸数字：入れかえた糸が元に戻る ／ ナミ：入れかえなし",
+        drawText("綾名：ナミ／上n＝上n下(6−n)の手取り ／ 先頭の数字：糸交換（上下段の糸を入れかえる位置）／ 丸数字：入れかえて元の色に戻す",
                  at: CGPoint(x: origin.x, y: y + 16), size: 7, bold: false,
                  color: gray(0.45), ctx: ctx)
     }

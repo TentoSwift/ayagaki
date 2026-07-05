@@ -105,57 +105,85 @@ enum Notation {
         return "(\(n))"
     }
 
-    /// 1段・片面ぶんの記号（書籍 4-13 の形式）。
-    /// 綾の読みで数えるのは「入れかえの目」＝1目おき（偶数目盛りの目、60玉=6目／68玉=7目）のみ。
-    /// 上n＝n目入れかえて浮かせる／下n＝n目そのまま。末尾の「下」は省略。
-    /// 入れかえなしの段は「ナミ」。前の段で入れかえていた糸が元に戻る「下」の目数には丸を付ける。
-    /// rowCells は d=0（中央）〜 N-1（外端）
-    static func rowText(_ rowCells: [Int], previous: [Int]?, dir: ReadDirection) -> String {
-        func ordered(_ cells: [Int]) -> [Bool] {
-            // 偶数目盛り（d=1,3,5,…）の目だけを中央側から取り出す
-            let sampled = stride(from: 1, to: cells.count, by: 2).map { cells[$0] > 0 }
-            switch dir {
-            case .edge:   return sampled.reversed()
-            case .center: return sampled
-            }
-        }
-        let flags = ordered(rowCells)
-        let prevFlags = previous.map(ordered)
+    /// 綾の読みで使う「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目／68玉=7目）
+    private static func sampledSlots(_ rowCells: [Int], dir: ReadDirection) -> [Bool] {
+        let sampled = stride(from: 1, to: rowCells.count, by: 2).map { rowCells[$0] > 0 }
+        return dir == .edge ? sampled.reversed() : Array(sampled)
+    }
 
-        var runs: [(flag: Bool, start: Int, n: Int)] = []
-        for (i, f) in flags.enumerated() {
+    /// 綾名（ナミ／上n下m…）。書籍 4-15 の書式:
+    /// ・中央から始まる単純な浮き（上n＋残り下）は「上n」と略記
+    /// ・それ以外は全区間を書き、3区間以上では 1 を省く（「下上下4」形式）
+    private static func ayaName(_ slots: [Bool]) -> String {
+        guard slots.contains(true) else { return "ナミ" }
+        var runs: [(flag: Bool, n: Int)] = []
+        for f in slots {
             if let last = runs.last, last.flag == f {
                 runs[runs.count - 1].n += 1
             } else {
-                runs.append((f, i, 1))
+                runs.append((f, 1))
             }
         }
-        if runs.count == 1 && runs[0].flag == false { return "ナミ" }
-        // 末尾の「そのまま」区間は書かない
-        if let last = runs.last, last.flag == false { runs.removeLast() }
-
+        if runs.first?.flag == true && runs.count <= 2 {
+            return "上\(runs[0].n)"
+        }
+        let omitOnes = runs.count >= 3
         return runs.map { run in
-            if run.flag { return "上\(run.n)" }
-            // 前の段で入れかえていた糸が元に戻る場合は数字に丸
-            let returned = prevFlags.map { prev in
-                (run.start..<(run.start + run.n)).contains { prev[$0] }
-            } ?? false
-            return "下" + (returned ? circled(run.n) : "\(run.n)")
+            let label = run.flag ? "上" : "下"
+            return (omitOnes && run.n == 1) ? label : label + "\(run.n)"
         }.joined()
+    }
+
+    /// 丸数字の範囲（3個以下は並記、4個以上は ②〜⑩ 形式）
+    private static func circledRange(_ from: Int, _ to: Int) -> String {
+        guard to >= from else { return "" }
+        if to - from + 1 <= 3 { return (from...to).map(circled).joined() }
+        return circled(from) + "〜" + circled(to)
+    }
+
+    /// 糸交換の番号列（2.3.4.5.6 形式）
+    private static func plainList(_ from: Int, _ to: Int) -> String {
+        guard to >= from else { return "" }
+        return (from...to).map(String.init).joined(separator: ".") + " "
+    }
+
+    /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
+    /// ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
+    /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
+    /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
+    static func sideTexts(_ plane: [[Int]], dir: ReadDirection) -> [String] {
+        var texts: [String] = []
+        var opRun = 0          // 連続する模様（非ナミ）段数
+        var prevSlots: [Bool]?
+        for row in plane {
+            let slots = sampledSlots(row, dir: dir)
+            if !slots.contains(true) {
+                texts.append(opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ")
+                opRun = 0
+            } else {
+                var prefix = ""
+                if let prev = prevSlots, opRun >= 2 {
+                    let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
+                    if added >= 2 { prefix = plainList(2, opRun) }
+                }
+                texts.append(prefix + ayaName(slots))
+                opRun += 1
+            }
+            prevSlots = slots
+        }
+        return texts
     }
 
     /// 全段を生成し、連続する同一手順の段をまとめる
     static func groups(cells: CellGrid, dir: ReadDirection) -> [NotationGroup] {
+        let lefts = sideTexts(cells.L, dir: dir)
+        let rights = sideTexts(cells.R, dir: dir)
         var out: [NotationGroup] = []
-        for r in 0..<cells.L.count {
-            let prevL = r > 0 ? cells.L[r - 1] : nil
-            let prevR = r > 0 ? cells.R[r - 1] : nil
-            let l = rowText(cells.L[r], previous: prevL, dir: dir)
-            let rt = rowText(cells.R[r], previous: prevR, dir: dir)
-            if let last = out.last, last.left == l, last.right == rt {
+        for r in 0..<lefts.count {
+            if let last = out.last, last.left == lefts[r], last.right == rights[r] {
                 out[out.count - 1].to = r
             } else {
-                out.append(NotationGroup(from: r, to: r, left: l, right: rt))
+                out.append(NotationGroup(from: r, to: r, left: lefts[r], right: rights[r]))
             }
         }
         return out

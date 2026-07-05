@@ -156,7 +156,7 @@
       </div>
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
-        記号の意味 — <b>上n</b>：n目入れかえて色糸を浮かせる／<b>下n</b>：n目そのまま（末尾は省略）／<b>丸数字</b>：入れかえた糸が元に戻る／<b>ナミ</b>：入れかえなし。<br>
+        記号の意味 — <b>綾名</b>：ナミ／上n（=上n下(6−n)の手取り）等／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
         数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。
       </div>
     </div>
@@ -369,40 +369,75 @@ function repaintAll() {
   }
 }
 
-/* ===== 交換記号の生成（書籍 4-13 の形式） =====
-   上n＝n目入れかえて浮かせる／下n＝n目そのまま（末尾の下は省略）。
-   入れかえなしの段は「ナミ」。前の段で入れかえていた糸が元に戻る下nの数字には丸を付ける */
+/* ===== 交換記号の生成（書籍 4-13 / 4-15 の形式） =====
+   1段＝[糸交換リスト]＋[綾名]。綾の読みは「入れかえの目」＝1目おき（偶数目盛り、60玉=6目）のみ。
+   ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
+   ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置
+   ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
 function circled(n) {
   return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : `(${n})`;
 }
-function rowNotation(side, r) {
+function circledRange(from, to) {
+  if (to < from) return "";
+  if (to - from + 1 <= 3) {
+    let s = "";
+    for (let i = from; i <= to; i++) s += circled(i);
+    return s;
+  }
+  return circled(from) + "〜" + circled(to);
+}
+function plainList(from, to) {
+  if (to < from) return "";
+  const parts = [];
+  for (let i = from; i <= to; i++) parts.push(i);
+  return parts.join(".") + " ";
+}
+function ayaName(slots) {
+  if (!slots.some(Boolean)) return "ナミ";
+  const runs = [];
+  for (const f of slots) {
+    if (runs.length && runs[runs.length - 1].f === f) runs[runs.length - 1].n++;
+    else runs.push({ f, n: 1 });
+  }
+  // 中央から始まる単純な浮きは「上n」と略記、それ以外は全区間（3区間以上は 1 を省略）
+  if (runs[0].f && runs.length <= 2) return `上${runs[0].n}`;
+  const omitOnes = runs.length >= 3;
+  return runs.map(x => (omitOnes && x.n === 1) ? (x.f ? "上" : "下") : (x.f ? "上" : "下") + x.n).join("");
+}
+function sideTexts(side) {
   const N = cols();
-  // 綾の読みで数えるのは「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目）のみ
   const idx = [];
   for (let d = 1; d < N; d += 2) idx.push(d);
   if (app.readDir === "edge") idx.reverse();
-  const seq = idx.map(d => (app.cells[side][r][d] > 0 ? 1 : 0));
-  const prev = r > 0 ? idx.map(d => (app.cells[side][r - 1][d] > 0 ? 1 : 0)) : null;
 
-  const runs = [];
-  seq.forEach((v, i) => {
-    if (runs.length && runs[runs.length - 1].v === v) runs[runs.length - 1].n++;
-    else runs.push({ v, n: 1, start: i });
-  });
-  if (runs.length === 1 && runs[0].v === 0) return "ナミ";
-  if (runs[runs.length - 1].v === 0) runs.pop(); // 末尾の「そのまま」は書かない
-
-  return runs.map(x => {
-    if (x.v === 1) return `上${x.n}`;
-    const returned = prev && prev.slice(x.start, x.start + x.n).some(p => p === 1);
-    return `下${returned ? circled(x.n) : x.n}`;
-  }).join("");
+  const texts = [];
+  let opRun = 0;
+  let prev = null;
+  for (let r = 0; r < app.rows; r++) {
+    const slots = idx.map(d => app.cells[side][r][d] > 0);
+    if (!slots.some(Boolean)) {
+      texts.push(opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ");
+      opRun = 0;
+    } else {
+      let prefix = "";
+      if (prev && opRun >= 2) {
+        const added = slots.filter((v, i) => v && !prev[i]).length;
+        if (added >= 2) prefix = plainList(2, opRun);
+      }
+      texts.push(prefix + ayaName(slots));
+      opRun++;
+    }
+    prev = slots;
+  }
+  return texts;
 }
 
 const notationDiv = document.getElementById("notation");
 function renderNotation() {
+  const lefts = sideTexts("L");
+  const rights = sideTexts("R");
   const rows = [];
-  for (let r = 0; r < app.rows; r++) rows.push({ L: rowNotation("L", r), R: rowNotation("R", r) });
+  for (let r = 0; r < app.rows; r++) rows.push({ L: lefts[r], R: rights[r] });
 
   // 連続する同一段をまとめる
   const groups = [];
