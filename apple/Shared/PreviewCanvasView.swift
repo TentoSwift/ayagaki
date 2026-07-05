@@ -12,8 +12,8 @@ struct PreviewCanvasView: View {
         let totalRows = vm.rowCount * repeats
         let cx = CGFloat(n + 1) * s + 4
         let y0 = CGFloat(n) * s + 4
-        let size = CGSize(width: 2 * CGFloat(n + 1) * s + 8,
-                          height: y0 + CGFloat(totalRows - 1) * 2 * s + s + 4)
+        let size = CGSize(width: CGFloat(2 * n + 1) * s + 8,
+                          height: y0 + CGFloat(totalRows - 1) * 2 * s + 2 * s + 4)
 
         Canvas { ctx, _ in
             let colors = vm.palette.map { Color(hex: $0) }
@@ -33,26 +33,15 @@ struct PreviewCanvasView: View {
                 let r = rr % vm.rowCount
                 for side in [BraidSide.left, .right] {
                     for d in 0..<n {
-                        let dx = s + CGFloat(d) * s
-                        let x = side == .right ? cx + dx : cx - dx
-                        let y = y0 + CGFloat(rr) * 2 * s - CGFloat(d) * s
+                        let x = side == .right ? cx + CGFloat(d) * s : cx - (1 + CGFloat(d)) * s
+                        let y = y0 + CGFloat(rr) * 2 * s - CGFloat(d) * s + (side == .right ? s : 0)
                         var color = colors[min(max(vm.cells.value(side: side, r: r, d: d), 0), colors.count - 1)]
                         // 糸の向きによる艶の違いを簡易表現
                         if side == .left { color = color.shaded(by: -6) }
                         diamond(x, y, color)
                     }
                 }
-                // 中央の隙間（隣接4マスの多数決で補間）
-                if rr < totalRows - 1 {
-                    let rNext = (rr + 1) % vm.rowCount
-                    let around = [vm.cells.L[r][0], vm.cells.R[r][0],
-                                  vm.cells.L[rNext][0], vm.cells.R[rNext][0]]
-                    var counts: [Int: Int] = [:]
-                    for v in around { counts[v, default: 0] += 1 }
-                    let val = counts.max { $0.value < $1.value }?.key ?? 0
-                    diamond(cx, y0 + CGFloat(rr) * 2 * s + s,
-                            colors[min(max(val, 0), colors.count - 1)])
-                }
+
             }
         }
         .frame(width: size.width, height: size.height)

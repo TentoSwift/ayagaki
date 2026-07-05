@@ -58,21 +58,12 @@ struct GridCanvasView: View {
                     }
                 }
             }
-            // 段番号（両端）
-            let yOuter = geo.center(side: .left, r: r, d: geo.cols - 1).y
+            // 段番号（両端。右半面は1目ずれる）
+            let yLeft = geo.center(side: .left, r: r, d: geo.cols - 1).y
+            let yRight = geo.center(side: .right, r: r, d: geo.cols - 1).y
             let num = Text("\(r + 1)").font(.system(size: 9)).foregroundColor(.secondary)
-            ctx.draw(num, at: CGPoint(x: geo.margin + geo.numW - 6, y: yOuter), anchor: .trailing)
-            ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yOuter), anchor: .leading)
+            ctx.draw(num, at: CGPoint(x: geo.margin + geo.numW - 6, y: yLeft), anchor: .trailing)
+            ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yRight), anchor: .leading)
         }
-
-        // 中央のジグザグ線（45°・一目ずつ左右に振れる。書籍 4-14 の中央線）
-        var zigzag = Path()
-        zigzag.move(to: CGPoint(x: geo.cx, y: geo.y0))
-        for j in 0..<(geo.rows * 2) {
-            let x = geo.cx + (j % 2 == 0 ? -geo.cell / 2 : geo.cell / 2)
-            zigzag.addLine(to: CGPoint(x: x, y: geo.y0 + CGFloat(j) * geo.cell + geo.cell / 2))
-        }
-        zigzag.addLine(to: CGPoint(x: geo.cx, y: geo.y0 + CGFloat(geo.rows * 2) * geo.cell))
-        ctx.stroke(zigzag, with: .color(.secondary.opacity(0.6)), lineWidth: 1.0)
     }
 }

@@ -231,16 +231,15 @@ function geo() {
   const N = cols();
   const cx = MARGIN + NUM_W + (N + 1) * CELL;
   const y0 = MARGIN + N * CELL;
-  const w = 2 * ((N + 1) * CELL) + 2 * (MARGIN + NUM_W);
-  const h = y0 + (app.rows - 1) * 2 * CELL + CELL + MARGIN;
+  const w = (2 * N + 1) * CELL + 2 * (MARGIN + NUM_W);
+  const h = y0 + (app.rows - 1) * 2 * CELL + 2 * CELL + MARGIN;
   return { N, cx, y0, w, h };
 }
 
 function cellCenter(g, side, r, d) {
-  const dx = CELL + d * CELL;
-  const x = side === "R" ? g.cx + dx : g.cx - dx;
-  const y = g.y0 + r * 2 * CELL - d * CELL;
-  return { x, y };
+  // 右半面は d=0 が中央線上・1目（CELL）下がって左半面と連続タイルになる
+  if (side === "R") return { x: g.cx + d * CELL, y: g.y0 + r * 2 * CELL - d * CELL + CELL };
+  return { x: g.cx - (1 + d) * CELL, y: g.y0 + r * 2 * CELL - d * CELL };
 }
 
 function diamondPoints(x, y) {
@@ -276,32 +275,18 @@ function renderGrid() {
         frag.appendChild(p);
       }
     }
-    // 段番号（両端）
-    const outer = cellCenter(g, "L", r, g.N - 1);
-    for (const [x, anchor] of [[MARGIN + NUM_W - 6, "end"], [g.w - MARGIN - NUM_W + 6, "start"]]) {
+    // 段番号（両端。右半面は1目ずれる）
+    const outerL = cellCenter(g, "L", r, g.N - 1);
+    const outerR = cellCenter(g, "R", r, g.N - 1);
+    for (const [x, anchor, y] of [[MARGIN + NUM_W - 6, "end", outerL.y], [g.w - MARGIN - NUM_W + 6, "start", outerR.y]]) {
       const t = document.createElementNS(NS, "text");
-      t.setAttribute("x", x); t.setAttribute("y", outer.y + 3);
+      t.setAttribute("x", x); t.setAttribute("y", y + 3);
       t.setAttribute("text-anchor", anchor);
       t.setAttribute("class", "num");
       t.textContent = r + 1;
       frag.appendChild(t);
     }
   }
-  // 中央のジグザグ線（45°・一目ずつ左右に振れる。書籍 4-14 の中央線）
-  let zig = `M ${g.cx} ${g.y0} `;
-  for (let j = 0; j < app.rows * 2; j++) {
-    const x = g.cx + (j % 2 === 0 ? -CELL / 2 : CELL / 2);
-    zig += `L ${x} ${g.y0 + j * CELL + CELL / 2} `;
-  }
-  zig += `L ${g.cx} ${g.y0 + app.rows * 2 * CELL} `;
-  const zigzag = document.createElementNS(NS, "path");
-  zigzag.setAttribute("d", zig);
-  zigzag.setAttribute("fill", "none");
-  zigzag.setAttribute("stroke", "#8a8270");
-  zigzag.setAttribute("stroke-width", "1.1");
-  zigzag.setAttribute("pointer-events", "none");
-  frag.appendChild(zigzag);
-
   gridSvg.appendChild(frag);
 }
 
@@ -531,24 +516,15 @@ function renderPreview() {
     const r = rr % app.rows;
     for (const side of ["L", "R"]) {
       for (let d = 0; d < N; d++) {
-        const dx = S + d * S;
-        const x = side === "R" ? cx + dx : cx - dx;
-        const y = y0 + rr * 2 * S - d * S;
+        const x = side === "R" ? cx + d * S : cx - (1 + d) * S;
+        const y = y0 + rr * 2 * S - d * S + (side === "R" ? S : 0);
         let color = app.palette[app.cells[side][r][d]] || app.palette[0];
         // 糸の向きによる艶の違いを簡易表現（左右で明度を少し変える）
         if (side === "L") color = shade(color, -6);
         addDiamond(x, y, color);
       }
     }
-    // 中央の隙間（隣接4マスの多数決で補間）
-    if (rr < totalRows - 1) {
-      const rNext = (rr + 1) % app.rows;
-      const around = [app.cells.L[r][0], app.cells.R[r][0], app.cells.L[rNext][0], app.cells.R[rNext][0]];
-      const counts = {};
-      for (const v of around) counts[v] = (counts[v] || 0) + 1;
-      const val = +Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-      addDiamond(cx, y0 + rr * 2 * S + S, app.palette[val] || app.palette[0]);
-    }
+
   }
   previewSvg.appendChild(frag);
 }

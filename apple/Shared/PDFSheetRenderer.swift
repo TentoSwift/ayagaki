@@ -73,26 +73,15 @@ struct PDFSheetRenderer {
                     ctx.strokePath()
                 }
             }
-            // 段番号（両端）
-            let yOuter = origin.y + geo.center(side: .left, r: r, d: geo.cols - 1).y
-            drawText("\(r + 1)", at: CGPoint(x: origin.x + geo.margin + geo.numW - 6, y: yOuter + 2.5),
+            // 段番号（両端。右半面は1目ずれる）
+            let yLeft = origin.y + geo.center(side: .left, r: r, d: geo.cols - 1).y
+            let yRight = origin.y + geo.center(side: .right, r: r, d: geo.cols - 1).y
+            drawText("\(r + 1)", at: CGPoint(x: origin.x + geo.margin + geo.numW - 6, y: yLeft + 2.5),
                      size: 7, bold: false, color: gray(0.45), ctx: ctx, alignRight: true)
-            drawText("\(r + 1)", at: CGPoint(x: origin.x + geo.size.width - geo.margin - geo.numW + 6, y: yOuter + 2.5),
+            drawText("\(r + 1)", at: CGPoint(x: origin.x + geo.size.width - geo.margin - geo.numW + 6, y: yRight + 2.5),
                      size: 7, bold: false, color: gray(0.45), ctx: ctx)
         }
 
-        // 中央のジグザグ線（45°・一目ずつ左右に振れる。書籍 4-14 の中央線）
-        ctx.setStrokeColor(gray(0.45))
-        ctx.setLineWidth(0.8)
-        ctx.move(to: CGPoint(x: origin.x + geo.cx, y: origin.y + geo.y0))
-        for j in 0..<(geo.rows * 2) {
-            let x = geo.cx + (j % 2 == 0 ? -geo.cell / 2 : geo.cell / 2)
-            ctx.addLine(to: CGPoint(x: origin.x + x,
-                                    y: origin.y + geo.y0 + CGFloat(j) * geo.cell + geo.cell / 2))
-        }
-        ctx.addLine(to: CGPoint(x: origin.x + geo.cx,
-                                y: origin.y + geo.y0 + CGFloat(geo.rows * 2) * geo.cell))
-        ctx.strokePath()
     }
 
     private func diamond(at p: CGPoint, ctx: CGContext) {

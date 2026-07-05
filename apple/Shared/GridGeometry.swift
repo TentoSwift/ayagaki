@@ -13,8 +13,9 @@ struct GridGeometry {
     var y0: CGFloat { margin + CGFloat(cols) * cell }
 
     var size: CGSize {
-        CGSize(width: 2 * CGFloat(cols + 1) * cell + 2 * (margin + numW),
-               height: y0 + CGFloat(rows - 1) * 2 * cell + cell + margin)
+        // 右半面は1目ぶん下・内側にずれて左半面と連続タイルになる（隙間なし・書籍と同じ1段ずれ）
+        CGSize(width: CGFloat(2 * cols + 1) * cell + 2 * (margin + numW),
+               height: y0 + CGFloat(rows - 1) * 2 * cell + 2 * cell + margin)
     }
 
     /// 中央目の半径（半サイズ）
@@ -26,8 +27,12 @@ struct GridGeometry {
             // 偶数=右半面（／向き）、奇数=左半面（＼向き）のマスが一目ずつ交互に並ぶ
             return CGPoint(x: cx, y: y0 + CGFloat(r) * cell + cell / 2)
         }
-        let dx = cell + CGFloat(d) * cell
-        return CGPoint(x: side == .right ? cx + dx : cx - dx,
+        if side == .right {
+            // 右半面: d=0 が中央線上、左半面と1目（c）ずれて連続タイルになる
+            return CGPoint(x: cx + CGFloat(d) * cell,
+                           y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell + cell)
+        }
+        return CGPoint(x: cx - (1 + CGFloat(d)) * cell,
                        y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell)
     }
 
@@ -62,18 +67,21 @@ struct GridGeometry {
         return p
     }
 
-    /// タッチ位置 → セル（菱形の内包判定つき）
+    /// タッチ位置 → セル（菱形の内包判定つき。境界付近は両半面を試す）
     func hitTest(_ p: CGPoint) -> (side: BraidSide, r: Int, d: Int)? {
-        let side: BraidSide = p.x >= cx ? .right : .left
-        let dx = abs(p.x - cx)
-        let dEst = Int((dx / cell).rounded()) - 1
-        guard dEst >= -1, dEst <= cols else { return nil }
-        for d in (dEst - 1)...(dEst + 1) where d >= 0 && d < cols {
-            let rEst = Int(((p.y - y0 + CGFloat(d) * cell) / (2 * cell)).rounded())
-            for r in (rEst - 1)...(rEst + 1) where r >= 0 && r < rows {
-                let c = center(side: side, r: r, d: d)
-                if abs(p.x - c.x) + abs(p.y - c.y) <= cell {
-                    return (side, r, d)
+        for side in [BraidSide.right, .left] {
+            let dxRaw = side == .right ? (p.x - cx) : (cx - p.x)
+            let dEst = side == .right ? Int((dxRaw / cell).rounded())
+                                      : Int((dxRaw / cell).rounded()) - 1
+            guard dEst >= -1, dEst <= cols else { continue }
+            let yOff: CGFloat = side == .right ? cell : 0
+            for d in (dEst - 1)...(dEst + 1) where d >= 0 && d < cols {
+                let rEst = Int(((p.y - y0 + CGFloat(d) * cell - yOff) / (2 * cell)).rounded())
+                for r in (rEst - 1)...(rEst + 1) where r >= 0 && r < rows {
+                    let c = center(side: side, r: r, d: d)
+                    if abs(p.x - c.x) + abs(p.y - c.y) <= cell {
+                        return (side, r, d)
+                    }
                 }
             }
         }
