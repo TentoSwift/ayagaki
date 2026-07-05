@@ -73,6 +73,12 @@ struct PDFSheetRenderer {
                     ctx.strokePath()
                 }
             }
+            // ⬆（中央で上ル）の印を中央の目に表示
+            for side in [BraidSide.left, .right] where snapshot.cells.hasArrow(side: side, row: r) {
+                let c = geo.center(side: side, r: r, d: 0)
+                drawText("⬆", at: CGPoint(x: origin.x + c.x - geo.cell * 0.45, y: origin.y + c.y + geo.cell * 0.35),
+                         size: geo.cell * 0.95, bold: true, color: gray(0.2), ctx: ctx)
+            }
             // 段番号（両端。右半面は1目ずれる）
             let yLeft = origin.y + geo.center(side: .left, r: r, d: geo.cols - 1).y
             let yRight = origin.y + geo.center(side: .right, r: r, d: geo.cols - 1).y

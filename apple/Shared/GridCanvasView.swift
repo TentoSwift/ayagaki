@@ -64,6 +64,15 @@ struct GridCanvasView: View {
             let num = Text("\(r + 1)").font(.system(size: 9)).foregroundColor(.secondary)
             ctx.draw(num, at: CGPoint(x: geo.margin + geo.numW - 6, y: yLeft), anchor: .trailing)
             ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yRight), anchor: .leading)
+
+            // ⬆（中央で上ル）の印を中央の目に表示
+            let arrow = Text("⬆").font(.system(size: geo.cell * 0.9, weight: .bold)).foregroundColor(.black.opacity(0.65))
+            if cells.hasArrow(side: .left, row: r) {
+                ctx.draw(arrow, at: geo.center(side: .left, r: r, d: 0), anchor: .center)
+            }
+            if cells.hasArrow(side: .right, row: r) {
+                ctx.draw(arrow, at: geo.center(side: .right, r: r, d: 0), anchor: .center)
+            }
         }
     }
 }
