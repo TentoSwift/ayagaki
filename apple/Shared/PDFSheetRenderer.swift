@@ -81,31 +81,40 @@ struct PDFSheetRenderer {
                      size: 7, bold: false, color: gray(0.45), ctx: ctx)
         }
 
-        // 中央のジグザグ目とジグザグ線
-        for k in 0..<geo.rows {
-            let p = geo.center(side: .center, r: k, d: 0)
+        // 中央のジグザグ目（各段2目・半サイズ）とジグザグ線
+        let cr = geo.centerRadius
+        for j in 0..<(geo.rows * 2) {
+            let p = geo.center(side: .center, r: j, d: 0)
             let point = CGPoint(x: origin.x + p.x, y: origin.y + p.y)
-            let v = snapshot.cells.value(side: .center, r: k, d: 0)
-            diamond(at: point, ctx: ctx)
+            let v = snapshot.cells.value(side: .center, r: j, d: 0)
+            smallDiamond(at: point, radius: cr, ctx: ctx)
             ctx.setFillColor(colors[min(max(v, 0), colors.count - 1)])
             ctx.fillPath()
-            diamond(at: point, ctx: ctx)
+            smallDiamond(at: point, radius: cr, ctx: ctx)
             ctx.setStrokeColor(line)
             ctx.setLineWidth(0.4)
             ctx.strokePath()
         }
         ctx.setStrokeColor(gray(0.45))
         ctx.setLineWidth(0.8)
-        for k in 0..<geo.rows {
-            let p = geo.center(side: .center, r: k, d: 0)
-            let cxp = origin.x + p.x
-            let cyp = origin.y + p.y
-            let sideX = k % 2 == 0 ? cxp - cell : cxp + cell
-            ctx.move(to: CGPoint(x: cxp, y: cyp - cell))
-            ctx.addLine(to: CGPoint(x: sideX, y: cyp))
-            ctx.addLine(to: CGPoint(x: cxp, y: cyp + cell))
+        ctx.move(to: CGPoint(x: origin.x + geo.cx, y: origin.y + geo.y0))
+        for j in 0..<(geo.rows * 2) {
+            let p = geo.center(side: .center, r: j, d: 0)
+            let outerX = j % 2 == 0 ? p.x + cr : p.x - cr
+            ctx.addLine(to: CGPoint(x: origin.x + outerX, y: origin.y + p.y))
         }
+        ctx.addLine(to: CGPoint(x: origin.x + geo.cx,
+                                y: origin.y + geo.y0 + CGFloat(geo.rows * 2) * geo.cell))
         ctx.strokePath()
+    }
+
+    private func smallDiamond(at p: CGPoint, radius s: CGFloat, ctx: CGContext) {
+        ctx.beginPath()
+        ctx.move(to: CGPoint(x: p.x, y: p.y - s))
+        ctx.addLine(to: CGPoint(x: p.x + s, y: p.y))
+        ctx.addLine(to: CGPoint(x: p.x, y: p.y + s))
+        ctx.addLine(to: CGPoint(x: p.x - s, y: p.y))
+        ctx.closePath()
     }
 
     private func diamond(at p: CGPoint, ctx: CGContext) {

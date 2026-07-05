@@ -39,7 +39,7 @@ final class DesignStore: @unchecked Sendable {
             dict["readDir"] = s.readDir ?? "center"
             dict["colsPerSide"] = BraidSpec.cols(forTama: s.tama)
             dict["cells"] = ["L": s.cells.L, "R": s.cells.R,
-                             "C": s.cells.C ?? [Int](repeating: 0, count: s.rows)]
+                             "C": s.cells.C ?? [Int](repeating: 0, count: s.rows * 2)]
             dict["notation"] = notationRows(s)
             return dict
         }
@@ -128,12 +128,14 @@ final class DesignStore: @unchecked Sendable {
                 }
             }
             if let cellsC {
-                guard cellsC.count == s.rows, cellsC.allSatisfy({ (0...3).contains($0) }) else {
-                    throw StoreError("cells.C は \(s.rows) 個（段数ぶん）・値 0〜3 で指定してください")
+                guard cellsC.count == s.rows * 2 || cellsC.count == s.rows,
+                      cellsC.allSatisfy({ (0...3).contains($0) }) else {
+                    throw StoreError("cells.C は \(s.rows * 2) 個（各段2目: index 2r=右の上ル目, 2r+1=左の上ル目）・値 0〜3 で指定してください")
                 }
             }
             s.cells = CellGrid(L: cellsL, R: cellsR,
-                               C: cellsC ?? [Int](repeating: 0, count: s.rows))
+                               C: cellsC ?? [Int](repeating: 0, count: s.rows * 2))
+                .resized(rows: s.rows, cols: cols)  // 旧形式の C を展開
             design.apply(snapshot: s)
             try saveAndNotify(design)
             return ["ok": true, "notation": notationRows(s)]
@@ -162,9 +164,11 @@ final class DesignStore: @unchecked Sendable {
                     throw StoreError("ops[\(i)] の段範囲が不正です（1〜\(s.rows)）")
                 }
                 if sideStr == "C" {
-                    // 中央のジグザグ目（pos は使わない）
+                    // 中央の上ル目（各段2目）。pos: 1=右の目のみ、2=左の目のみ、省略=両方
+                    let half = op["posFrom"] as? Int
                     for r in (rowFrom - 1)...(rowTo - 1) {
-                        s.cells.set(side: .center, r: r, d: 0, to: color)
+                        if half == nil || half == 1 { s.cells.set(side: .center, r: 2 * r, d: 0, to: color) }
+                        if half == nil || half == 2 { s.cells.set(side: .center, r: 2 * r + 1, d: 0, to: color) }
                     }
                     continue
                 }

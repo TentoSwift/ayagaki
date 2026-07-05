@@ -42,9 +42,10 @@ struct PreviewCanvasView: View {
                         diamond(x, y, color)
                     }
                 }
-                // 中央のジグザグ目（デザインの色をそのまま使う）
+                // 中央の隙間（その段の上ル目の色で埋める）
                 if rr < totalRows - 1 {
-                    let val = vm.cells.value(side: .center, r: r, d: 0)
+                    let val = max(vm.cells.value(side: .center, r: 2 * r, d: 0),
+                                  vm.cells.value(side: .center, r: 2 * r + 1, d: 0))
                     diamond(cx, y0 + CGFloat(rr) * 2 * s + s,
                             colors[min(max(val, 0), colors.count - 1)])
                 }

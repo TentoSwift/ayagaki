@@ -92,14 +92,15 @@ final class EditorViewModel: ObservableObject {
     }
 
     private func paint(side: BraidSide, r: Int, d: Int) {
-        guard r >= 0, r < rowCount else { return }
         if side == .center {
-            // 中央のジグザグ目（左右共通なので対称塗りは不要）
+            // 中央の上ル目（r は通し番号 0..2*rows-1）。塗るとその段に ⬆ が付く
+            guard r >= 0, r < rowCount * 2 else { return }
             if cells.value(side: .center, r: r, d: 0) != currentColor {
                 cells.set(side: .center, r: r, d: 0, to: currentColor)
             }
             return
         }
+        guard r >= 0, r < rowCount else { return }
         guard d >= 0, d < cols else { return }
         if cells.value(side: side, r: r, d: d) != currentColor {
             cells.set(side: side, r: r, d: d, to: currentColor)

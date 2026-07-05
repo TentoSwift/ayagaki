@@ -119,7 +119,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "serverInfo": ["name": Self.serverName, "version": Self.serverVersion],
                 "instructions": """
                 組紐（二枚安田組）の綾書デザインを読み書きするサーバです。
-                グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（60玉=13目、68玉=15目）＋ 中央のジグザグ目 C（段ごとに1目・綾名には数えない）。
+                グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（60玉=13目、68玉=15目）＋ 中央の上ル目 C（各段2目: index 2r=右半面、2r+1=左半面。塗るとその段の記号に ⬆=中央で上ル が付く）。
                 セル値: 0=地（ナミ）、1〜3=柄色。paint の pos は綾書定規の目盛りと同じで 1=中央 … colsPerSide=外端。
                 模様は両端の目（pos=colsPerSide）にかからないようにするのが定石。
                 同じ段のセルは実際の組紐では斜めのラインになります。模様の設計は paint（矩形塗り）か set_cells（全置換）で行い、
@@ -282,7 +282,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
         ],
         [
             "name": "get_design",
-            "description": "デザインの全情報を取得する。cells は {L, R, C}。L/R は 2 半面 × 段 × 目の 2 次元配列（0=地、1〜3=柄色、index 0 が中央寄り）。C は中央のジグザグ目（段ごとに1目）。notation（交換記号）も含む。",
+            "description": "デザインの全情報を取得する。cells は {L, R, C}。L/R は 2 半面 × 段 × 目の 2 次元配列（0=地、1〜3=柄色、index 0 が中央寄り）。C は中央の上ル目（各段2目: index 2r=右半面、2r+1=左半面。>0 でその段に ⬆）。notation（交換記号）も含む。",
             "inputSchema": [
                 "type": "object",
                 "properties": ["id": ["type": "string", "description": "list_designs で取得したデザイン ID"]],
@@ -332,7 +332,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                         "items": [
                             "type": "object",
                             "properties": [
-                                "side": ["type": "string", "enum": ["L", "R", "both", "C"], "description": "左半面 / 右半面 / 両方 / 中央のジグザグ目（C のとき pos は不要）"],
+                                "side": ["type": "string", "enum": ["L", "R", "both", "C"], "description": "左半面 / 右半面 / 両方 / 中央の上ル目（C: 各段2目。posFrom=1 で右の目のみ、2 で左の目のみ、省略で両方。塗るとその段の記号に ⬆ が付く）"],
                                 "rowFrom": ["type": "integer", "description": "開始段（1 始まり）"],
                                 "rowTo": ["type": "integer", "description": "終了段（省略時 rowFrom と同じ）"],
                                 "posFrom": ["type": "integer", "description": "開始目（1=中央、綾書定規の目盛りと同じ）"],

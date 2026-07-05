@@ -200,7 +200,8 @@ function cols() { return TAMA_TO_COLS[app.tama]; }
 
 function emptyCells(rows, n) {
   const mk = () => Array.from({ length: rows }, () => new Array(n).fill(0));
-  return { L: mk(), R: mk(), C: new Array(rows).fill(0) };
+  // C: 各段2目（index 2r=右半面の段r+1の上ル目、2r+1=左半面）。塗るとその段に ⬆ が付く
+  return { L: mk(), R: mk(), C: new Array(rows * 2).fill(0) };
 }
 
 function resizeCells(old, rows, n) {
@@ -212,7 +213,12 @@ function resizeCells(old, rows, n) {
       }
     }
     if (old.C) {
-      for (let r = 0; r < Math.min(rows, old.C.length); r++) nc.C[r] = old.C[r];
+      if (old.C.length === old.L.length) {
+        // 旧形式（段ごとに1目）→ 両方の目に展開
+        for (let r = 0; r < Math.min(rows, old.C.length); r++) { nc.C[2*r] = old.C[r]; nc.C[2*r+1] = old.C[r]; }
+      } else {
+        for (let j = 0; j < Math.min(rows * 2, old.C.length); j++) nc.C[j] = old.C[j];
+      }
     }
   }
   return nc;
@@ -281,26 +287,29 @@ function renderGrid() {
       frag.appendChild(t);
     }
   }
-  // 中央のジグザグ目（段ごとに1目、塗れる）
-  for (let k = 0; k < app.rows; k++) {
-    const y = g.y0 + k * 2 * CELL + CELL;
+  // 中央のジグザグ目（各段2目・半サイズ。塗るとその段に ⬆ が付く）
+  const CR = CELL / 2;
+  for (let j = 0; j < app.rows * 2; j++) {
+    const x = g.cx + (j % 2 === 0 ? CELL / 4 : -CELL / 4);
+    const y = g.y0 + j * CELL + CELL / 2;
     const p = document.createElementNS(NS, "polygon");
-    p.setAttribute("points", diamondPoints(g.cx, y));
+    p.setAttribute("points", `${x},${y - CR} ${x + CR},${y} ${x},${y + CR} ${x - CR},${y}`);
     p.setAttribute("class", "cell");
     p.setAttribute("stroke", "#b8b096");
     p.setAttribute("stroke-width", "0.6");
-    p.dataset.side = "C"; p.dataset.r = k; p.dataset.d = 0;
-    p.setAttribute("fill", app.palette[app.cells.C[k]] || app.palette[0]);
-    cellIndex[`C-${k}-0`] = p;
+    p.dataset.side = "C"; p.dataset.r = j; p.dataset.d = 0;
+    p.setAttribute("fill", app.palette[app.cells.C[j]] || app.palette[0]);
+    cellIndex[`C-${j}-0`] = p;
     frag.appendChild(p);
   }
-  // 書籍風のジグザグ線（中央の目の左右の辺を交互になぞる）
-  let zig = "";
-  for (let k = 0; k < app.rows; k++) {
-    const y = g.y0 + k * 2 * CELL + CELL;
-    const sideX = k % 2 === 0 ? g.cx - CELL : g.cx + CELL;
-    zig += `M ${g.cx} ${y - CELL} L ${sideX} ${y} L ${g.cx} ${y + CELL} `;
+  // 書籍風のジグザグ線（一段ずつ左右に振れる）
+  let zig = `M ${g.cx} ${g.y0} `;
+  for (let j = 0; j < app.rows * 2; j++) {
+    const x = g.cx + (j % 2 === 0 ? CELL / 4 + CR : -(CELL / 4 + CR));
+    const y = g.y0 + j * CELL + CELL / 2;
+    zig += `L ${x} ${y} `;
   }
+  zig += `L ${g.cx} ${g.y0 + app.rows * 2 * CELL} `;
   const zigzag = document.createElementNS(NS, "path");
   zigzag.setAttribute("d", zig);
   zigzag.setAttribute("fill", "none");
@@ -446,8 +455,9 @@ function sideTexts(side) {
   let prev = null;
   for (let r = 0; r < app.rows; r++) {
     const slots = idx.map(d => app.cells[side][r][d] > 0);
+    let text;
     if (!slots.some(Boolean)) {
-      texts.push(opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ");
+      text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ";
       opRun = 0;
     } else {
       let prefix = "";
@@ -455,9 +465,13 @@ function sideTexts(side) {
         const added = slots.filter((v, i) => v && !prev[i]).length;
         if (added >= 2) prefix = plainList(2, opRun);
       }
-      texts.push(prefix + ayaName(slots));
+      text = prefix + ayaName(slots);
       opRun++;
     }
+    // 中央の上ル目が塗られている段は ⬆（中央で上ル）
+    const cj = side === "R" ? 2 * r : 2 * r + 1;
+    if ((app.cells.C[cj] || 0) > 0) text += "⬆";
+    texts.push(text);
     prev = slots;
   }
   return texts;
@@ -542,9 +556,9 @@ function renderPreview() {
         addDiamond(x, y, color);
       }
     }
-    // 中央のジグザグ目（デザインの色をそのまま使う）
+    // 中央の隙間（その段の上ル目の色で埋める）
     if (rr < totalRows - 1) {
-      const val = app.cells.C[r] || 0;
+      const val = Math.max(app.cells.C[2*r] || 0, app.cells.C[2*r+1] || 0);
       addDiamond(cx, y0 + rr * 2 * S + S, app.palette[val] || app.palette[0]);
     }
   }

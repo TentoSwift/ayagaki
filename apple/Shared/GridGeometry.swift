@@ -17,10 +17,16 @@ struct GridGeometry {
                height: y0 + CGFloat(rows - 1) * 2 * cell + cell + margin)
     }
 
+    /// 中央目の半径（半サイズ）
+    var centerRadius: CGFloat { cell / 2 }
+
     func center(side: BraidSide, r: Int, d: Int) -> CGPoint {
         if side == .center {
-            // 中央のジグザグ目: 段 r と r+1 の間
-            return CGPoint(x: cx, y: y0 + CGFloat(r) * 2 * cell + cell)
+            // 中央のジグザグ目: 各段に2目（r は通し番号 j = 0..2*rows-1）。
+            // 偶数=右半面の上ル目（右寄り）、奇数=左半面の上ル目（左寄り）で一段ずつジグザグ
+            let j = r
+            let nudge = j % 2 == 0 ? cell / 4 : -cell / 4
+            return CGPoint(x: cx + nudge, y: y0 + CGFloat(j) * cell + cell / 2)
         }
         let dx = cell + CGFloat(d) * cell
         return CGPoint(x: side == .right ? cx + dx : cx - dx,
@@ -40,13 +46,13 @@ struct GridGeometry {
 
     /// タッチ位置 → セル（菱形の内包判定つき）
     func hitTest(_ p: CGPoint) -> (side: BraidSide, r: Int, d: Int)? {
-        // 中央のジグザグ目
+        // 中央のジグザグ目（各段2目・半サイズ）
         if abs(p.x - cx) <= cell {
-            let kEst = Int(((p.y - y0 - cell) / (2 * cell)).rounded())
-            for k in (kEst - 1)...(kEst + 1) where k >= 0 && k < rows {
-                let c = center(side: .center, r: k, d: 0)
-                if abs(p.x - c.x) + abs(p.y - c.y) <= cell {
-                    return (.center, k, 0)
+            let jEst = Int(((p.y - y0 - cell / 2) / cell).rounded())
+            for j in (jEst - 1)...(jEst + 1) where j >= 0 && j < rows * 2 {
+                let c = center(side: .center, r: j, d: 0)
+                if abs(p.x - c.x) + abs(p.y - c.y) <= centerRadius {
+                    return (.center, j, 0)
                 }
             }
         }

@@ -42,11 +42,13 @@ enum BraidSpec {
 struct CellGrid: Codable, Equatable {
     var L: [[Int]]
     var R: [[Int]]
-    var C: [Int]?   // 中央のジグザグ目（段ごとに1目）。古いデータには無い
+    /// 中央のジグザグ目（各段に2目: index 2r=右半面の段r+1の上ル目、2r+1=左半面の段r+1の上ル目）。
+    /// 塗るとその段の記号に ⬆（中央で上ル）が付く。古いデータには無い／段数ぶんの旧形式もある
+    var C: [Int]?
 
     static func empty(rows: Int, cols: Int) -> CellGrid {
         let plane = [[Int]](repeating: [Int](repeating: 0, count: cols), count: rows)
-        return CellGrid(L: plane, R: plane, C: [Int](repeating: 0, count: rows))
+        return CellGrid(L: plane, R: plane, C: [Int](repeating: 0, count: rows * 2))
     }
 
     /// サイズ変更（既存の塗りは可能な範囲で保持）
@@ -59,11 +61,20 @@ struct CellGrid: Codable, Equatable {
             for d in 0..<min(cols, R[r].count) { out.R[r][d] = R[r][d] }
         }
         if let C {
-            for r in 0..<min(rows, C.count) { out.C![r] = C[r] }
+            if C.count == L.count {
+                // 旧形式（段ごとに1目）→ 両方の目に展開
+                for r in 0..<min(rows, C.count) {
+                    out.C![2 * r] = C[r]
+                    out.C![2 * r + 1] = C[r]
+                }
+            } else {
+                for j in 0..<min(rows * 2, C.count) { out.C![j] = C[j] }
+            }
         }
         return out
     }
 
+    /// side == .center のとき r は中央目の通し番号 j（0..2*rows-1）
     func value(side: BraidSide, r: Int, d: Int) -> Int {
         switch side {
         case .left: return L[r][d]
@@ -79,9 +90,17 @@ struct CellGrid: Codable, Equatable {
         case .left: L[r][d] = v
         case .right: R[r][d] = v
         case .center:
-            if C == nil || C!.count != L.count { C = [Int](repeating: 0, count: L.count) }
+            if C == nil || C!.count != L.count * 2 { C = resized(rows: L.count, cols: L.first?.count ?? 0).C }
             if r < C!.count { C![r] = v }
         }
+    }
+
+    /// その段の記号に ⬆ を付けるか（中央の上ル目が塗られているか）
+    func hasArrow(side: BraidSide, row: Int) -> Bool {
+        guard let C else { return false }
+        if C.count == L.count { return row < C.count && C[row] > 0 }  // 旧形式
+        let j = side == .right ? 2 * row : 2 * row + 1
+        return j < C.count && C[j] > 0
     }
 }
 
@@ -174,14 +193,15 @@ enum Notation {
     /// ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
-    static func sideTexts(_ plane: [[Int]], dir: ReadDirection) -> [String] {
+    static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil) -> [String] {
         var texts: [String] = []
         var opRun = 0          // 連続する模様（非ナミ）段数
         var prevSlots: [Bool]?
-        for row in plane {
+        for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
+            var text: String
             if !slots.contains(true) {
-                texts.append(opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ")
+                text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ"
                 opRun = 0
             } else {
                 var prefix = ""
@@ -189,9 +209,11 @@ enum Notation {
                     let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
                     if added >= 2 { prefix = plainList(2, opRun) }
                 }
-                texts.append(prefix + ayaName(slots))
+                text = prefix + ayaName(slots)
                 opRun += 1
             }
+            if arrows?[r] == true { text += "⬆" }  // 中央で上ル
+            texts.append(text)
             prevSlots = slots
         }
         return texts
@@ -199,8 +221,11 @@ enum Notation {
 
     /// 全段を生成し、連続する同一手順の段をまとめる
     static func groups(cells: CellGrid, dir: ReadDirection) -> [NotationGroup] {
-        let lefts = sideTexts(cells.L, dir: dir)
-        let rights = sideTexts(cells.R, dir: dir)
+        let rows = cells.L.count
+        let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
+        let arrowsR = (0..<rows).map { cells.hasArrow(side: .right, row: $0) }
+        let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL)
+        let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR)
         var out: [NotationGroup] = []
         for r in 0..<lefts.count {
             if let last = out.last, last.left == lefts[r], last.right == rights[r] {
