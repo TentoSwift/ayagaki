@@ -451,13 +451,14 @@ function sideTexts(side) {
   let prev = null;
   for (let r = 0; r < app.rows; r++) {
     const slots = idx.map(d => app.cells[side][r][d] > 0);
-    const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル（入れかえの一種）
+    const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
     let text;
+    let isBridge = false;
     if (!slots.some(Boolean)) {
       if (risesAtCenter) {
-        // 中央だけで上がる段: 綾はナミだが入れかえとして数える
+        // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
         text = "ナミ";
-        opRun++;
+        isBridge = true;
       } else {
         text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ";
         opRun = 0;
@@ -475,7 +476,7 @@ function sideTexts(side) {
     const cj = side === "R" ? 2 * r : 2 * r + 1;
     if ((app.cells.C[cj] || 0) > 0) text += "⬆";
     texts.push(text);
-    prev = slots;
+    if (!isBridge) prev = slots;
   }
   return texts;
 }

@@ -210,13 +210,14 @@ enum Notation {
         var prevSlots: [Bool]?
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
-            let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル（入れかえの一種）
+            let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
             var text: String
+            var isBridge = false
             if !slots.contains(true) {
                 if risesAtCenter {
-                    // 中央だけで上がる段: 綾はナミだが入れかえとして数える
+                    // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
                     text = "ナミ"
-                    opRun += 1
+                    isBridge = true
                 } else {
                     text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ"
                     opRun = 0
@@ -232,7 +233,7 @@ enum Notation {
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
             texts.append(text)
-            prevSlots = slots
+            if !isBridge { prevSlots = slots }
         }
         return texts
     }
