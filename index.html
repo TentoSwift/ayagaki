@@ -498,11 +498,16 @@ function renderNotation() {
   for (const gp of groups) {
     const tr = document.createElement("tr");
     const seg = gp.from === gp.to ? `${gp.from + 1}` : `${gp.from + 1}〜${gp.to + 1}`;
-    tr.innerHTML = `<td class="seg">${seg}</td><td class="tapL" style="cursor:pointer">${gp.L}</td><td class="tapR" style="cursor:pointer">${gp.R}</td>`;
+    const cell = (txt, side) => {
+      const on = txt.endsWith("⬆");
+      const body = on ? txt.slice(0, -1) : txt;
+      return `<td>${body} <span class="arrowBtn ${side}" style="cursor:pointer;font-weight:bold;${on ? "" : "opacity:.22"}" title="中央で上ル（⬆）を切り替え">⬆</span></td>`;
+    };
+    tr.innerHTML = `<td class="seg">${seg}</td>` + cell(gp.L, "L") + cell(gp.R, "R");
     tr.addEventListener("mouseenter", () => highlightRows(gp.from, gp.to, true));
     tr.addEventListener("mouseleave", () => highlightRows(gp.from, gp.to, false));
-    tr.querySelector(".tapL").addEventListener("click", () => toggleArrows(gp.from, gp.to, "L"));
-    tr.querySelector(".tapR").addEventListener("click", () => toggleArrows(gp.from, gp.to, "R"));
+    tr.querySelector(".arrowBtn.L").addEventListener("click", () => toggleArrows(gp.from, gp.to, "L"));
+    tr.querySelector(".arrowBtn.R").addEventListener("click", () => toggleArrows(gp.from, gp.to, "R"));
     tbl.appendChild(tr);
   }
   notationDiv.innerHTML = "";

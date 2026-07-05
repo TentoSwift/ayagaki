@@ -21,26 +21,41 @@ struct NotationTable: View {
                         .frame(width: 56, alignment: .leading)
                         .contentShape(Rectangle())
                         .onTapGesture { onTap?(g) }
-                    Text(g.left)
-                        .font(.caption)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if let onToggleArrow { onToggleArrow(g, .left) } else { onTap?(g) }
-                        }
-                    Text(g.right)
-                        .font(.caption)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if let onToggleArrow { onToggleArrow(g, .right) } else { onTap?(g) }
-                        }
+                    notationCell(g.left, side: .left, group: g)
+                    notationCell(g.right, side: .right, group: g)
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
                 .background(isSelected ? Color.red.opacity(0.12) : Color.clear)
                 Divider()
             }
+        }
+    }
+
+    /// 記号テキスト + ⬆ トグルボタン（中央で上ル）。非対話時は文字列をそのまま表示
+    @ViewBuilder
+    private func notationCell(_ text: String, side: BraidSide, group: NotationGroup) -> some View {
+        if let onToggleArrow {
+            let hasArrow = text.hasSuffix("⬆")
+            HStack(spacing: 4) {
+                Text(hasArrow ? String(text.dropLast()) : text)
+                    .font(.caption)
+                Button {
+                    onToggleArrow(group, side)
+                } label: {
+                    Text("⬆")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(hasArrow ? .primary : Color.secondary.opacity(0.25))
+                }
+                .buttonStyle(.plain)
+                .help("中央で上ル（⬆）を切り替え")
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Text(text)
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
