@@ -287,13 +287,16 @@ function renderGrid() {
       frag.appendChild(t);
     }
   }
-  // 中央のジグザグ目（各段2目・半サイズ。塗るとその段に ⬆ が付く）
-  const CR = CELL / 2;
+  // 中央の上ル目（向きが一目ずつ交互のマス。／=右半面、＼=左半面。塗るとその段に ⬆ が付く）
+  const E = CELL * 0.42, F = CELL * 0.20;
   for (let j = 0; j < app.rows * 2; j++) {
-    const x = g.cx + (j % 2 === 0 ? CELL / 4 : -CELL / 4);
+    const x = g.cx;
     const y = g.y0 + j * CELL + CELL / 2;
+    const pts = j % 2 === 0
+      ? `${x-E+F},${y+E+F} ${x+E+F},${y-E+F} ${x+E-F},${y-E-F} ${x-E-F},${y+E-F}`   // ／
+      : `${x-E+F},${y-E-F} ${x+E+F},${y+E-F} ${x+E-F},${y+E+F} ${x-E-F},${y-E+F}`;  // ＼
     const p = document.createElementNS(NS, "polygon");
-    p.setAttribute("points", `${x},${y - CR} ${x + CR},${y} ${x},${y + CR} ${x - CR},${y}`);
+    p.setAttribute("points", pts);
     p.setAttribute("class", "cell");
     p.setAttribute("stroke", "#b8b096");
     p.setAttribute("stroke-width", "0.6");
@@ -302,10 +305,10 @@ function renderGrid() {
     cellIndex[`C-${j}-0`] = p;
     frag.appendChild(p);
   }
-  // 書籍風のジグザグ線（一段ずつ左右に振れる）
+  // 書籍風のジグザグ線（マスの向きと逆側を一目ずつ縫う）
   let zig = `M ${g.cx} ${g.y0} `;
   for (let j = 0; j < app.rows * 2; j++) {
-    const x = g.cx + (j % 2 === 0 ? CELL / 4 + CR : -(CELL / 4 + CR));
+    const x = g.cx + (j % 2 === 0 ? -CELL * 0.62 : CELL * 0.62);
     const y = g.y0 + j * CELL + CELL / 2;
     zig += `L ${x} ${y} `;
   }

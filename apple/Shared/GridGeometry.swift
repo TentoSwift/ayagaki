@@ -22,15 +22,33 @@ struct GridGeometry {
 
     func center(side: BraidSide, r: Int, d: Int) -> CGPoint {
         if side == .center {
-            // 中央のジグザグ目: 各段に2目（r は通し番号 j = 0..2*rows-1）。
-            // 偶数=右半面の上ル目（右寄り）、奇数=左半面の上ル目（左寄り）で一段ずつジグザグ
-            let j = r
-            let nudge = j % 2 == 0 ? cell / 4 : -cell / 4
-            return CGPoint(x: cx + nudge, y: y0 + CGFloat(j) * cell + cell / 2)
+            // 中央の上ル目: 各段に2目（r は通し番号 j = 0..2*rows-1）。
+            // 偶数=右半面（／向き）、奇数=左半面（＼向き）のマスが一目ずつ交互に並ぶ
+            return CGPoint(x: cx, y: y0 + CGFloat(r) * cell + cell / 2)
         }
         let dx = cell + CGFloat(d) * cell
         return CGPoint(x: side == .right ? cx + dx : cx - dx,
                        y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell)
+    }
+
+    /// 中央目のマス（45°に傾いた平行四辺形）の4頂点。偶数=右半面（／）、奇数=左半面（＼）
+    func centerBarCorners(_ j: Int) -> [CGPoint] {
+        let p = center(side: .center, r: j, d: 0)
+        let e = cell * 0.42   // 長さの半分
+        let f = cell * 0.20   // 厚みの半分
+        if j % 2 == 0 {
+            // ／ 向き（軸 (1,-1)、法線 (1,1)）
+            return [CGPoint(x: p.x - e + f, y: p.y + e + f),
+                    CGPoint(x: p.x + e + f, y: p.y - e + f),
+                    CGPoint(x: p.x + e - f, y: p.y - e - f),
+                    CGPoint(x: p.x - e - f, y: p.y + e - f)]
+        } else {
+            // ＼ 向き（軸 (1,1)、法線 (1,-1)）
+            return [CGPoint(x: p.x - e + f, y: p.y - e - f),
+                    CGPoint(x: p.x + e + f, y: p.y + e - f),
+                    CGPoint(x: p.x + e - f, y: p.y + e + f),
+                    CGPoint(x: p.x - e - f, y: p.y - e + f)]
+        }
     }
 
     func diamondPath(at c: CGPoint, radius: CGFloat? = nil) -> Path {
@@ -46,12 +64,12 @@ struct GridGeometry {
 
     /// タッチ位置 → セル（菱形の内包判定つき）
     func hitTest(_ p: CGPoint) -> (side: BraidSide, r: Int, d: Int)? {
-        // 中央のジグザグ目（各段2目・半サイズ）
-        if abs(p.x - cx) <= cell {
+        // 中央の上ル目（各段2目・向き交互のマス）
+        if abs(p.x - cx) <= cell * 0.62 {
             let jEst = Int(((p.y - y0 - cell / 2) / cell).rounded())
             for j in (jEst - 1)...(jEst + 1) where j >= 0 && j < rows * 2 {
                 let c = center(side: .center, r: j, d: 0)
-                if abs(p.x - c.x) + abs(p.y - c.y) <= centerRadius {
+                if abs(p.y - c.y) <= cell / 2 {
                     return (.center, j, 0)
                 }
             }
