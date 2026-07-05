@@ -78,7 +78,7 @@ struct ContentView: View {
             name: "", tama: 60, rows: BraidSpec.defaultRows,
             palette: BraidSpec.defaultPalette,
             cells: .empty(rows: BraidSpec.defaultRows, cols: BraidSpec.cols(forTama: 60)),
-            readDir: ReadDirection.edge.rawValue))
+            readDir: ReadDirection.center.rawValue))
         try? context.save()
         selection = design.objectID
     }

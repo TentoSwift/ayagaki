@@ -18,8 +18,8 @@ enum ReadDirection: String, Codable, CaseIterable, Identifiable {
 }
 
 enum BraidSpec {
-    /// 玉数 → 片面の目数（二枚安田組は片面に半数の糸が見える）
-    static func cols(forTama tama: Int) -> Int { tama == 68 ? 17 : 15 }
+    /// 玉数 → 片面の目数（書籍 4-10/4-11 の綾書定規の目盛り: 60玉=1〜13、68玉=1〜15）
+    static func cols(forTama tama: Int) -> Int { tama == 68 ? 15 : 13 }
     static let tamaOptions = [60, 68]
     static let rowRange = 4...120
     static let defaultRows = 40

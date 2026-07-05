@@ -119,8 +119,9 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "serverInfo": ["name": Self.serverName, "version": Self.serverVersion],
                 "instructions": """
                 組紐（二枚安田組）の綾書デザインを読み書きするサーバです。
-                グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（60玉=15目、68玉=17目）。
-                セル値: 0=地（ナミ）、1〜3=柄色。paint の pos は 1=外端 … colsPerSide=中央。
+                グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（60玉=13目、68玉=15目）。
+                セル値: 0=地（ナミ）、1〜3=柄色。paint の pos は綾書定規の目盛りと同じで 1=中央 … colsPerSide=外端。
+                模様は両端の目（pos=colsPerSide）にかからないようにするのが定石。
                 同じ段のセルは実際の組紐では斜めのラインになります。模様の設計は paint（矩形塗り）か set_cells（全置換）で行い、
                 get_notation で組むときの交換記号（ナミn=n目そのまま／上n=n目交換して浮かせる）を取得できます。
                 export_pdf で手順書 PDF をファイルに書き出し、返されたパスから読み取れます。
@@ -294,7 +295,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "type": "object",
                 "properties": [
                     "name": ["type": "string", "description": "デザイン名（必須）"],
-                    "tama": ["type": "integer", "description": "玉数: 60（片面15目）か 68（片面17目）。省略時 60"],
+                    "tama": ["type": "integer", "description": "玉数: 60（片面13目）か 68（片面15目）。省略時 60"],
                     "rows": ["type": "integer", "description": "段数 4〜120。省略時 40"],
                 ],
                 "required": ["name"],
@@ -319,7 +320,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
         ],
         [
             "name": "paint",
-            "description": "矩形範囲を塗って模様を描く。複数の op をまとめて適用できる。段 row は 1 始まり（上から）、目 pos は 1=外端 … colsPerSide=中央。color 0 で消去。同じ段の連続する目は、実際の組紐では 45° の斜めラインになる点に注意。適用後の交換記号を返す。",
+            "description": "矩形範囲を塗って模様を描く。複数の op をまとめて適用できる。段 row は 1 始まり（上から）、目 pos は綾書定規の目盛りと同じで 1=中央 … colsPerSide=外端。color 0 で消去。同じ段の連続する目は、実際の組紐では 45° の斜めラインになる点に注意。適用後の交換記号を返す。",
             "inputSchema": [
                 "type": "object",
                 "properties": [
@@ -333,7 +334,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                                 "side": ["type": "string", "enum": ["L", "R", "both"], "description": "左半面 / 右半面 / 両方"],
                                 "rowFrom": ["type": "integer", "description": "開始段（1 始まり）"],
                                 "rowTo": ["type": "integer", "description": "終了段（省略時 rowFrom と同じ）"],
-                                "posFrom": ["type": "integer", "description": "開始目（1=外端）"],
+                                "posFrom": ["type": "integer", "description": "開始目（1=中央、綾書定規の目盛りと同じ）"],
                                 "posTo": ["type": "integer", "description": "終了目（省略時 posFrom と同じ）"],
                                 "color": ["type": "integer", "description": "0=地（消去）、1〜3=柄色"],
                             ],

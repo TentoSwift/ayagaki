@@ -18,7 +18,7 @@ struct PDFSheetRenderer {
         let geo = GridGeometry(cols: cols, rows: snapshot.rows, cell: cell)
         let groups = Notation.groups(
             cells: snapshot.cells,
-            dir: ReadDirection(rawValue: snapshot.readDir ?? "") ?? .edge)
+            dir: ReadDirection(rawValue: snapshot.readDir ?? "") ?? .center)
 
         let titleH: CGFloat = 34
         let notationW = notationColWidths.rows + 2 * notationColWidths.half

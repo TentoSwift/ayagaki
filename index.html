@@ -121,8 +121,8 @@
       <div class="row">
         <label>玉数
           <select id="tamaSel">
-            <option value="60">60玉（片面15目）</option>
-            <option value="68">68玉（片面17目）</option>
+            <option value="60">60玉（片面13目）</option>
+            <option value="68">68玉（片面15目）</option>
           </select>
         </label>
         <label>段数 <input type="number" id="rowsInp" min="4" max="120" value="40"></label>
@@ -137,8 +137,8 @@
         <button id="clearBtn">全消去</button>
         <label>記号の読み方向
           <select id="dirSel">
-            <option value="edge">端 → 中央</option>
             <option value="center">中央 → 端</option>
+            <option value="edge">端 → 中央</option>
           </select>
         </label>
       </div>
@@ -177,7 +177,7 @@
 "use strict";
 
 /* ===== 状態 ===== */
-const TAMA_TO_COLS = { 60: 15, 68: 17 };
+const TAMA_TO_COLS = { 60: 13, 68: 15 };  // 綾書定規（書籍 4-10/4-11）の目盛りに合わせる
 const CELL = 10;               // 菱形の半径（横=縦、45°）
 const MARGIN = 8;
 const NUM_W = 26;              // 段番号の帯幅
@@ -191,7 +191,7 @@ let app = {
   paletteNames: ["地", "柄1", "柄2", "柄3"],
   cur: 1,
   sym: false,
-  readDir: "edge",
+  readDir: "center",  // 綾書定規の目盛り（1=中央）に合わせ中央→端を既定に
   name: "",
   cells: null,   // { L: rows×N, R: rows×N }  値 = パレット番号（0=地）
 };
@@ -501,7 +501,7 @@ function restore(s) {
   app.tama = TAMA_TO_COLS[s.tama] ? s.tama : 60;
   app.rows = Math.max(4, Math.min(120, s.rows || 40));
   app.palette = Array.isArray(s.palette) && s.palette.length === 4 ? s.palette : app.palette;
-  app.readDir = s.readDir === "center" ? "center" : "edge";
+  app.readDir = s.readDir === "edge" ? "edge" : "center";
   app.name = s.name || "";
   app.cells = resizeCells(s.cells, app.rows, cols());
   syncControls();

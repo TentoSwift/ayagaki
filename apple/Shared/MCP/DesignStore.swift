@@ -36,7 +36,7 @@ final class DesignStore: @unchecked Sendable {
             let s = design.snapshot
             var dict = summary(of: design)
             dict["palette"] = s.palette
-            dict["readDir"] = s.readDir ?? "edge"
+            dict["readDir"] = s.readDir ?? "center"
             dict["colsPerSide"] = BraidSpec.cols(forTama: s.tama)
             dict["cells"] = ["L": s.cells.L, "R": s.cells.R]
             dict["notation"] = notationRows(s)
@@ -71,7 +71,7 @@ final class DesignStore: @unchecked Sendable {
                 palette: BraidSpec.defaultPalette,
                 cells: .empty(rows: rows ?? BraidSpec.defaultRows,
                               cols: BraidSpec.cols(forTama: tama ?? 60)),
-                readDir: ReadDirection.edge.rawValue))
+                readDir: ReadDirection.center.rawValue))
             try saveAndNotify(design)
             return summary(of: design)
         }
@@ -132,7 +132,7 @@ final class DesignStore: @unchecked Sendable {
         }
     }
 
-    /// 矩形（段範囲 × 目範囲）を塗る。pos は外端=1 … 中央=colsPerSide の 1 始まり。
+    /// 矩形（段範囲 × 目範囲）を塗る。pos は綾書定規の目盛りと同じで中央=1 … 外端=colsPerSide。
     func paint(id: String, ops: [[String: Any]]) throws -> [String: Any] {
         try context.performAndWait {
             let design = try find(id)
@@ -154,14 +154,14 @@ final class DesignStore: @unchecked Sendable {
                     throw StoreError("ops[\(i)] の段範囲が不正です（1〜\(s.rows)）")
                 }
                 guard posFrom >= 1, posTo <= cols, posFrom <= posTo else {
-                    throw StoreError("ops[\(i)] の目範囲が不正です（1〜\(cols)、1=外端）")
+                    throw StoreError("ops[\(i)] の目範囲が不正です（1〜\(cols)、1=中央）")
                 }
                 let sides: [BraidSide] = sideStr == "both" ? [.left, .right]
                     : (sideStr == "L" ? [.left] : [.right])
                 for side in sides {
                     for r in (rowFrom - 1)...(rowTo - 1) {
                         for pos in posFrom...posTo {
-                            s.cells.set(side: side, r: r, d: cols - pos, to: color)
+                            s.cells.set(side: side, r: r, d: pos - 1, to: color)
                         }
                     }
                 }
@@ -223,7 +223,7 @@ final class DesignStore: @unchecked Sendable {
     }
 
     private func notationRows(_ s: DesignSnapshot) -> [[String: Any]] {
-        let dir = ReadDirection(rawValue: s.readDir ?? "") ?? .edge
+        let dir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
         return Notation.groups(cells: s.cells, dir: dir).map {
             ["rows": $0.label, "left": $0.left, "right": $0.right]
         }

@@ -34,7 +34,7 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         cells = s.cells
         palette = s.palette
-        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .edge
+        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
 
         // MCP サーバなど外部からの変更を画面に反映する
         let objectID = design.objectID
@@ -59,7 +59,7 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         cells = s.cells
         palette = s.palette
-        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .edge
+        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
     }
 
     var snapshotValue: DesignSnapshot {
@@ -164,7 +164,7 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         palette = s.palette
         cells = s.cells
-        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .edge
+        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
         if !s.name.isEmpty { design.name = s.name }
         scheduleSave()
     }
