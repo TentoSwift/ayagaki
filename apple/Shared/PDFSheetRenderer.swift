@@ -125,7 +125,7 @@ struct PDFSheetRenderer {
             hline(at: y, from: origin.x, width: rowsW + 2 * halfW, ctx: ctx)
         }
 
-        drawText("ナミn：n目そのまま組む ／ 上n：色糸をn目交換して表に浮かせる",
+        drawText("上n：n目入れかえて色糸を浮かせる ／ 下n：n目そのまま ／ 丸数字：入れかえた糸が元に戻る ／ ナミ：入れかえなし",
                  at: CGPoint(x: origin.x, y: y + 16), size: 7, bold: false,
                  color: gray(0.45), ctx: ctx)
     }

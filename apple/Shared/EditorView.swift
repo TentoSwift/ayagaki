@@ -180,7 +180,7 @@ struct EditorView: View {
     }
 
     private var legend: some View {
-        Text("ナミn：n目そのまま組む ／ 上n：色糸をn目交換して表に浮かせる")
+        Text("上n：n目入れかえて色糸を浮かせる ／ 下n：n目そのまま ／ 丸数字：入れかえた糸が元に戻る ／ ナミ：入れかえなし")
             .font(.caption2)
             .foregroundColor(.secondary)
     }

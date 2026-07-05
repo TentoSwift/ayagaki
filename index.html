@@ -156,8 +156,7 @@
       </div>
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
-        記号の意味 — <b>ナミn</b>：n目そのまま組む／<b>上n</b>：色糸をn目交換して表に浮かせる。<br>
-        ※記号体系は簡易版です。お手元の書籍（4-13 綾書2）と突き合わせて読み替えてください。
+        記号の意味 — <b>上n</b>：n目入れかえて色糸を浮かせる／<b>下n</b>：n目そのまま（末尾は省略）／<b>丸数字</b>：入れかえた糸が元に戻る／<b>ナミ</b>：入れかえなし。
       </div>
     </div>
 
@@ -369,23 +368,32 @@ function repaintAll() {
   }
 }
 
-/* ===== 交換記号の生成 =====
-   各段・各半面：外端→中央（設定で反転）にマスを走査し、
-   地（0）の連続 → ナミn ／ 柄（>0）の連続 → 上n として列挙 */
+/* ===== 交換記号の生成（書籍 4-13 の形式） =====
+   上n＝n目入れかえて浮かせる／下n＝n目そのまま（末尾の下は省略）。
+   入れかえなしの段は「ナミ」。前の段で入れかえていた糸が元に戻る下nの数字には丸を付ける */
+function circled(n) {
+  return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : `(${n})`;
+}
 function rowNotation(side, r) {
   const N = cols();
-  const seq = [];
   const idx = [];
   for (let k = 0; k < N; k++) idx.push(app.readDir === "edge" ? N - 1 - k : k); // d列の走査順
-  for (const d of idx) seq.push(app.cells[side][r][d] > 0 ? 1 : 0);
+  const seq = idx.map(d => (app.cells[side][r][d] > 0 ? 1 : 0));
+  const prev = r > 0 ? idx.map(d => (app.cells[side][r - 1][d] > 0 ? 1 : 0)) : null;
 
   const runs = [];
-  for (const v of seq) {
+  seq.forEach((v, i) => {
     if (runs.length && runs[runs.length - 1].v === v) runs[runs.length - 1].n++;
-    else runs.push({ v, n: 1 });
-  }
+    else runs.push({ v, n: 1, start: i });
+  });
   if (runs.length === 1 && runs[0].v === 0) return "ナミ";
-  return runs.map(x => (x.v === 0 ? `ナミ${x.n}` : `上${x.n}`)).join("・");
+  if (runs[runs.length - 1].v === 0) runs.pop(); // 末尾の「そのまま」は書かない
+
+  return runs.map(x => {
+    if (x.v === 1) return `上${x.n}`;
+    const returned = prev && prev.slice(x.start, x.start + x.n).some(p => p === 1);
+    return `下${returned ? circled(x.n) : x.n}`;
+  }).join("");
 }
 
 const notationDiv = document.getElementById("notation");

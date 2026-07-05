@@ -97,31 +97,58 @@ struct NotationGroup: Identifiable, Equatable {
 }
 
 enum Notation {
-    /// 1段・片面ぶんの記号。rowCells は d=0（中央）〜 N-1（外端）
-    static func rowText(_ rowCells: [Int], dir: ReadDirection) -> String {
-        let flags: [Bool]
-        switch dir {
-        case .edge:   flags = rowCells.reversed().map { $0 > 0 }
-        case .center: flags = rowCells.map { $0 > 0 }
+    /// 丸数字（糸が元の段に戻った目数に付ける。書籍 4-13 の丸印）
+    private static func circled(_ n: Int) -> String {
+        if (1...20).contains(n), let scalar = UnicodeScalar(0x2460 + n - 1) {
+            return String(Character(scalar))
         }
-        var runs: [(flag: Bool, n: Int)] = []
-        for f in flags {
+        return "(\(n))"
+    }
+
+    /// 1段・片面ぶんの記号（書籍 4-13 の形式）。
+    /// 上n＝n目入れかえて浮かせる／下n＝n目そのまま。末尾の「下」は省略。
+    /// 入れかえなしの段は「ナミ」。前の段で入れかえていた糸が元に戻る「下」の目数には丸を付ける。
+    /// rowCells は d=0（中央）〜 N-1（外端）
+    static func rowText(_ rowCells: [Int], previous: [Int]?, dir: ReadDirection) -> String {
+        func ordered(_ cells: [Int]) -> [Bool] {
+            switch dir {
+            case .edge:   return cells.reversed().map { $0 > 0 }
+            case .center: return cells.map { $0 > 0 }
+            }
+        }
+        let flags = ordered(rowCells)
+        let prevFlags = previous.map(ordered)
+
+        var runs: [(flag: Bool, start: Int, n: Int)] = []
+        for (i, f) in flags.enumerated() {
             if let last = runs.last, last.flag == f {
                 runs[runs.count - 1].n += 1
             } else {
-                runs.append((f, 1))
+                runs.append((f, i, 1))
             }
         }
         if runs.count == 1 && runs[0].flag == false { return "ナミ" }
-        return runs.map { $0.flag ? "上\($0.n)" : "ナミ\($0.n)" }.joined(separator: "・")
+        // 末尾の「そのまま」区間は書かない
+        if let last = runs.last, last.flag == false { runs.removeLast() }
+
+        return runs.map { run in
+            if run.flag { return "上\(run.n)" }
+            // 前の段で入れかえていた糸が元に戻る場合は数字に丸
+            let returned = prevFlags.map { prev in
+                (run.start..<(run.start + run.n)).contains { prev[$0] }
+            } ?? false
+            return "下" + (returned ? circled(run.n) : "\(run.n)")
+        }.joined()
     }
 
     /// 全段を生成し、連続する同一手順の段をまとめる
     static func groups(cells: CellGrid, dir: ReadDirection) -> [NotationGroup] {
         var out: [NotationGroup] = []
         for r in 0..<cells.L.count {
-            let l = rowText(cells.L[r], dir: dir)
-            let rt = rowText(cells.R[r], dir: dir)
+            let prevL = r > 0 ? cells.L[r - 1] : nil
+            let prevR = r > 0 ? cells.R[r - 1] : nil
+            let l = rowText(cells.L[r], previous: prevL, dir: dir)
+            let rt = rowText(cells.R[r], previous: prevR, dir: dir)
             if let last = out.last, last.left == l, last.right == rt {
                 out[out.count - 1].to = r
             } else {
