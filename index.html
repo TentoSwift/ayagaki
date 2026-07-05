@@ -275,21 +275,6 @@ function renderGrid() {
         frag.appendChild(p);
       }
     }
-    // ⬆（中央で上ル）の印を中央寄りの目に表示
-    for (const [side, cj] of [["L", 2 * r + 1], ["R", 2 * r]]) {
-      if ((app.cells.C[cj] || 0) > 0) {
-        const c = cellCenter(g, side, r, 0);
-        const t = document.createElementNS(NS, "text");
-        t.setAttribute("x", c.x); t.setAttribute("y", c.y + CELL * 0.38);
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("font-size", CELL * 1.1);
-        t.setAttribute("font-weight", "bold");
-        t.setAttribute("fill", "rgba(30,25,15,0.7)");
-        t.setAttribute("pointer-events", "none");
-        t.textContent = "⬆";
-        frag.appendChild(t);
-      }
-    }
     // 段番号（両端。右半面は1目ずれる）
     const outerL = cellCenter(g, "L", r, g.N - 1);
     const outerR = cellCenter(g, "R", r, g.N - 1);
