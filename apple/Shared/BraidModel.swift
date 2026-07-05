@@ -5,8 +5,15 @@ import Foundation
 enum BraidSide: String, Codable {
     case left = "L"
     case right = "R"
+    case center = "C"   // 中央のジグザグ目（段ごとに1目、綾名には数えない）
 
-    var opposite: BraidSide { self == .left ? .right : .left }
+    var opposite: BraidSide {
+        switch self {
+        case .left: return .right
+        case .right: return .left
+        case .center: return .center
+        }
+    }
 }
 
 enum ReadDirection: String, Codable, CaseIterable, Identifiable {
@@ -35,10 +42,11 @@ enum BraidSpec {
 struct CellGrid: Codable, Equatable {
     var L: [[Int]]
     var R: [[Int]]
+    var C: [Int]?   // 中央のジグザグ目（段ごとに1目）。古いデータには無い
 
     static func empty(rows: Int, cols: Int) -> CellGrid {
         let plane = [[Int]](repeating: [Int](repeating: 0, count: cols), count: rows)
-        return CellGrid(L: plane, R: plane)
+        return CellGrid(L: plane, R: plane, C: [Int](repeating: 0, count: rows))
     }
 
     /// サイズ変更（既存の塗りは可能な範囲で保持）
@@ -50,15 +58,30 @@ struct CellGrid: Codable, Equatable {
         for r in 0..<min(rows, R.count) {
             for d in 0..<min(cols, R[r].count) { out.R[r][d] = R[r][d] }
         }
+        if let C {
+            for r in 0..<min(rows, C.count) { out.C![r] = C[r] }
+        }
         return out
     }
 
     func value(side: BraidSide, r: Int, d: Int) -> Int {
-        side == .left ? L[r][d] : R[r][d]
+        switch side {
+        case .left: return L[r][d]
+        case .right: return R[r][d]
+        case .center:
+            guard let C, r < C.count else { return 0 }
+            return C[r]
+        }
     }
 
     mutating func set(side: BraidSide, r: Int, d: Int, to v: Int) {
-        if side == .left { L[r][d] = v } else { R[r][d] = v }
+        switch side {
+        case .left: L[r][d] = v
+        case .right: R[r][d] = v
+        case .center:
+            if C == nil || C!.count != L.count { C = [Int](repeating: 0, count: L.count) }
+            if r < C!.count { C![r] = v }
+        }
     }
 }
 

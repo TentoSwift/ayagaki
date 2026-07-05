@@ -65,11 +65,22 @@ struct GridCanvasView: View {
             ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yOuter), anchor: .leading)
         }
 
-        // 中央線
-        var centerLine = Path()
-        centerLine.move(to: CGPoint(x: geo.cx, y: geo.y0 - geo.cell))
-        centerLine.addLine(to: CGPoint(x: geo.cx, y: geo.y0 + CGFloat(geo.rows - 1) * 2 * geo.cell + geo.cell))
-        ctx.stroke(centerLine, with: .color(.secondary.opacity(0.5)),
-                   style: StrokeStyle(lineWidth: 0.5, dash: [3, 2]))
+        // 中央のジグザグ目（段ごとに1目、塗れる）
+        for k in 0..<geo.rows {
+            let path = geo.diamondPath(at: geo.center(side: .center, r: k, d: 0))
+            let v = cells.value(side: .center, r: k, d: 0)
+            ctx.fill(path, with: .color(colors[min(max(v, 0), colors.count - 1)]))
+            ctx.stroke(path, with: .color(gridLine), lineWidth: 0.5)
+        }
+        // 書籍風のジグザグ線（中央の目の左右の辺を交互になぞる）
+        var zigzag = Path()
+        for k in 0..<geo.rows {
+            let c = geo.center(side: .center, r: k, d: 0)
+            let sideX = k % 2 == 0 ? c.x - geo.cell : c.x + geo.cell
+            zigzag.move(to: CGPoint(x: c.x, y: c.y - geo.cell))
+            zigzag.addLine(to: CGPoint(x: sideX, y: c.y))
+            zigzag.addLine(to: CGPoint(x: c.x, y: c.y + geo.cell))
+        }
+        ctx.stroke(zigzag, with: .color(.secondary.opacity(0.7)), lineWidth: 1.0)
     }
 }

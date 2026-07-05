@@ -92,7 +92,15 @@ final class EditorViewModel: ObservableObject {
     }
 
     private func paint(side: BraidSide, r: Int, d: Int) {
-        guard r >= 0, r < rowCount, d >= 0, d < cols else { return }
+        guard r >= 0, r < rowCount else { return }
+        if side == .center {
+            // 中央のジグザグ目（左右共通なので対称塗りは不要）
+            if cells.value(side: .center, r: r, d: 0) != currentColor {
+                cells.set(side: .center, r: r, d: 0, to: currentColor)
+            }
+            return
+        }
+        guard d >= 0, d < cols else { return }
         if cells.value(side: side, r: r, d: d) != currentColor {
             cells.set(side: side, r: r, d: d, to: currentColor)
         }

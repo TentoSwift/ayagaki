@@ -18,6 +18,10 @@ struct GridGeometry {
     }
 
     func center(side: BraidSide, r: Int, d: Int) -> CGPoint {
+        if side == .center {
+            // 中央のジグザグ目: 段 r と r+1 の間
+            return CGPoint(x: cx, y: y0 + CGFloat(r) * 2 * cell + cell)
+        }
         let dx = cell + CGFloat(d) * cell
         return CGPoint(x: side == .right ? cx + dx : cx - dx,
                        y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell)
@@ -36,6 +40,16 @@ struct GridGeometry {
 
     /// タッチ位置 → セル（菱形の内包判定つき）
     func hitTest(_ p: CGPoint) -> (side: BraidSide, r: Int, d: Int)? {
+        // 中央のジグザグ目
+        if abs(p.x - cx) <= cell {
+            let kEst = Int(((p.y - y0 - cell) / (2 * cell)).rounded())
+            for k in (kEst - 1)...(kEst + 1) where k >= 0 && k < rows {
+                let c = center(side: .center, r: k, d: 0)
+                if abs(p.x - c.x) + abs(p.y - c.y) <= cell {
+                    return (.center, k, 0)
+                }
+            }
+        }
         let side: BraidSide = p.x >= cx ? .right : .left
         let dx = abs(p.x - cx)
         let dEst = Int((dx / cell).rounded()) - 1

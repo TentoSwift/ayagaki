@@ -81,15 +81,31 @@ struct PDFSheetRenderer {
                      size: 7, bold: false, color: gray(0.45), ctx: ctx)
         }
 
-        // 中央線（破線）
-        ctx.setStrokeColor(gray(0.6))
-        ctx.setLineWidth(0.4)
-        ctx.setLineDash(phase: 0, lengths: [3, 2])
-        ctx.move(to: CGPoint(x: origin.x + geo.cx, y: origin.y + geo.y0 - geo.cell))
-        ctx.addLine(to: CGPoint(x: origin.x + geo.cx,
-                                y: origin.y + geo.y0 + CGFloat(geo.rows - 1) * 2 * geo.cell + geo.cell))
+        // 中央のジグザグ目とジグザグ線
+        for k in 0..<geo.rows {
+            let p = geo.center(side: .center, r: k, d: 0)
+            let point = CGPoint(x: origin.x + p.x, y: origin.y + p.y)
+            let v = snapshot.cells.value(side: .center, r: k, d: 0)
+            diamond(at: point, ctx: ctx)
+            ctx.setFillColor(colors[min(max(v, 0), colors.count - 1)])
+            ctx.fillPath()
+            diamond(at: point, ctx: ctx)
+            ctx.setStrokeColor(line)
+            ctx.setLineWidth(0.4)
+            ctx.strokePath()
+        }
+        ctx.setStrokeColor(gray(0.45))
+        ctx.setLineWidth(0.8)
+        for k in 0..<geo.rows {
+            let p = geo.center(side: .center, r: k, d: 0)
+            let cxp = origin.x + p.x
+            let cyp = origin.y + p.y
+            let sideX = k % 2 == 0 ? cxp - cell : cxp + cell
+            ctx.move(to: CGPoint(x: cxp, y: cyp - cell))
+            ctx.addLine(to: CGPoint(x: sideX, y: cyp))
+            ctx.addLine(to: CGPoint(x: cxp, y: cyp + cell))
+        }
         ctx.strokePath()
-        ctx.setLineDash(phase: 0, lengths: [])
     }
 
     private func diamond(at p: CGPoint, ctx: CGContext) {

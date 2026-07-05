@@ -38,7 +38,8 @@ final class DesignStore: @unchecked Sendable {
             dict["palette"] = s.palette
             dict["readDir"] = s.readDir ?? "center"
             dict["colsPerSide"] = BraidSpec.cols(forTama: s.tama)
-            dict["cells"] = ["L": s.cells.L, "R": s.cells.R]
+            dict["cells"] = ["L": s.cells.L, "R": s.cells.R,
+                             "C": s.cells.C ?? [Int](repeating: 0, count: s.rows)]
             dict["notation"] = notationRows(s)
             return dict
         }
@@ -112,7 +113,8 @@ final class DesignStore: @unchecked Sendable {
     }
 
     /// グリッド全体を置き換える。次元は rows × colsPerSide に一致している必要がある。
-    func setCells(id: String, cellsL: [[Int]], cellsR: [[Int]]) throws -> [String: Any] {
+    /// cellsC は中央のジグザグ目（rows 個、省略可）。
+    func setCells(id: String, cellsL: [[Int]], cellsR: [[Int]], cellsC: [Int]?) throws -> [String: Any] {
         try context.performAndWait {
             let design = try find(id)
             var s = design.snapshot
@@ -125,7 +127,13 @@ final class DesignStore: @unchecked Sendable {
                     throw StoreError("セル値は 0（地）〜 3（柄3）です")
                 }
             }
-            s.cells = CellGrid(L: cellsL, R: cellsR)
+            if let cellsC {
+                guard cellsC.count == s.rows, cellsC.allSatisfy({ (0...3).contains($0) }) else {
+                    throw StoreError("cells.C は \(s.rows) 個（段数ぶん）・値 0〜3 で指定してください")
+                }
+            }
+            s.cells = CellGrid(L: cellsL, R: cellsR,
+                               C: cellsC ?? [Int](repeating: 0, count: s.rows))
             design.apply(snapshot: s)
             try saveAndNotify(design)
             return ["ok": true, "notation": notationRows(s)]
@@ -140,8 +148,8 @@ final class DesignStore: @unchecked Sendable {
             let cols = BraidSpec.cols(forTama: s.tama)
 
             for (i, op) in ops.enumerated() {
-                guard let sideStr = op["side"] as? String, ["L", "R", "both"].contains(sideStr) else {
-                    throw StoreError("ops[\(i)].side は L / R / both を指定してください")
+                guard let sideStr = op["side"] as? String, ["L", "R", "both", "C"].contains(sideStr) else {
+                    throw StoreError("ops[\(i)].side は L / R / both / C（中央のジグザグ目）を指定してください")
                 }
                 guard let color = op["color"] as? Int, (0...3).contains(color) else {
                     throw StoreError("ops[\(i)].color は 0（地）〜 3 を指定してください")
@@ -152,6 +160,13 @@ final class DesignStore: @unchecked Sendable {
                 let posTo = op["posTo"] as? Int ?? posFrom
                 guard rowFrom >= 1, rowTo <= s.rows, rowFrom <= rowTo else {
                     throw StoreError("ops[\(i)] の段範囲が不正です（1〜\(s.rows)）")
+                }
+                if sideStr == "C" {
+                    // 中央のジグザグ目（pos は使わない）
+                    for r in (rowFrom - 1)...(rowTo - 1) {
+                        s.cells.set(side: .center, r: r, d: 0, to: color)
+                    }
+                    continue
                 }
                 guard posFrom >= 1, posTo <= cols, posFrom <= posTo else {
                     throw StoreError("ops[\(i)] の目範囲が不正です（1〜\(cols)、1=中央）")

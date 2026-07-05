@@ -42,14 +42,9 @@ struct PreviewCanvasView: View {
                         diamond(x, y, color)
                     }
                 }
-                // 中央の隙間（隣接 4 マスの多数決で着色）
+                // 中央のジグザグ目（デザインの色をそのまま使う）
                 if rr < totalRows - 1 {
-                    let rNext = (rr + 1) % vm.rowCount
-                    let around = [vm.cells.L[r][0], vm.cells.R[r][0],
-                                  vm.cells.L[rNext][0], vm.cells.R[rNext][0]]
-                    var counts: [Int: Int] = [:]
-                    for v in around { counts[v, default: 0] += 1 }
-                    let val = counts.max { $0.value < $1.value }?.key ?? 0
+                    let val = vm.cells.value(side: .center, r: r, d: 0)
                     diamond(cx, y0 + CGFloat(rr) * 2 * s + s,
                             colors[min(max(val, 0), colors.count - 1)])
                 }
