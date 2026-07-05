@@ -277,7 +277,8 @@ function renderGrid() {
     }
     // ⬆（中央で上ル）の印を中央寄りの目に表示
     for (const [side, cj] of [["L", 2 * r + 1], ["R", 2 * r]]) {
-      if ((app.cells[side][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) {
+      const opp = side === "R" ? "L" : "R";
+      if ((app.cells[opp][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) {
         const c = cellCenter(g, side, r, 0);
         const t = document.createElementNS(NS, "text");
         t.setAttribute("x", c.x); t.setAttribute("y", c.y + CELL * 0.38);
@@ -468,9 +469,10 @@ function sideTexts(side) {
       text = prefix + ayaName(slots);
       opRun++;
     }
-    // 中央の2列（d=0）に色が置かれた段は自動で ⬆、それ以外は手動指定（C）
+    // 中央の2列（d=0）の色は「反対側から来て上ル糸」なので、⬆は反対側の半面に付く。手動指定（C）も併用
     const cj = side === "R" ? 2 * r : 2 * r + 1;
-    if ((app.cells[side][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) text += "⬆";
+    const opp = side === "R" ? "L" : "R";
+    if ((app.cells[opp][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) text += "⬆";
     texts.push(text);
     prev = slots;
   }

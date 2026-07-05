@@ -96,10 +96,11 @@ struct CellGrid: Codable, Equatable {
     }
 
     /// その段の記号に ⬆（中央で上ル）を付けるか。
-    /// 中央の2列（d=0）に色が置かれた段は自動で ⬆、それ以外は手動指定（C）による
+    /// 中央の2列（d=0）に色が置かれた段は自動で ⬆（反対側の半面に付く —
+    /// 中央の目に見えるのは「反対側から来て上ル糸」のため）。手動指定（C）も併用
     func hasArrow(side: BraidSide, row: Int) -> Bool {
-        let plane = side == .right ? R : L
-        if row < plane.count, (plane[row].first ?? 0) > 0 { return true }
+        let oppositePlane = side == .right ? L : R
+        if row < oppositePlane.count, (oppositePlane[row].first ?? 0) > 0 { return true }
         guard let C else { return false }
         if C.count == L.count { return row < C.count && C[row] > 0 }  // 旧形式
         let j = side == .right ? 2 * row : 2 * row + 1
