@@ -76,12 +76,12 @@ struct GridCanvasView: View {
             ctx.fill(path, with: .color(colors[min(max(v, 0), colors.count - 1)]))
             ctx.stroke(path, with: .color(gridLine), lineWidth: 0.5)
         }
-        // 書籍風のジグザグ線（マスの向きと逆側を一目ずつ縫う）
+        // 書籍風のジグザグ線（45°でマスの向きと逆側を一目ずつ縫う）
         var zigzag = Path()
         zigzag.move(to: CGPoint(x: geo.cx, y: geo.y0))
         for j in 0..<(geo.rows * 2) {
             let c = geo.center(side: .center, r: j, d: 0)
-            let outerX = j % 2 == 0 ? c.x - geo.cell * 0.62 : c.x + geo.cell * 0.62
+            let outerX = j % 2 == 0 ? c.x - geo.cell / 2 : c.x + geo.cell / 2
             zigzag.addLine(to: CGPoint(x: outerX, y: c.y))
         }
         zigzag.addLine(to: CGPoint(x: geo.cx, y: geo.y0 + CGFloat(geo.rows * 2) * geo.cell))

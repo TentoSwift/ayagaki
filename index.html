@@ -288,7 +288,7 @@ function renderGrid() {
     }
   }
   // 中央の上ル目（向きが一目ずつ交互のマス。／=右半面、＼=左半面。塗るとその段に ⬆ が付く）
-  const E = CELL * 0.42, F = CELL * 0.20;
+  const E = CELL * 0.70, F = CELL * 0.36;  // 通常の目と同面積
   for (let j = 0; j < app.rows * 2; j++) {
     const x = g.cx;
     const y = g.y0 + j * CELL + CELL / 2;
@@ -308,7 +308,7 @@ function renderGrid() {
   // 書籍風のジグザグ線（マスの向きと逆側を一目ずつ縫う）
   let zig = `M ${g.cx} ${g.y0} `;
   for (let j = 0; j < app.rows * 2; j++) {
-    const x = g.cx + (j % 2 === 0 ? -CELL * 0.62 : CELL * 0.62);
+    const x = g.cx + (j % 2 === 0 ? -CELL / 2 : CELL / 2);  // 45°
     const y = g.y0 + j * CELL + CELL / 2;
     zig += `L ${x} ${y} `;
   }

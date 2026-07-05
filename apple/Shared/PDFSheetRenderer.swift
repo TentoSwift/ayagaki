@@ -104,7 +104,7 @@ struct PDFSheetRenderer {
         ctx.move(to: CGPoint(x: origin.x + geo.cx, y: origin.y + geo.y0))
         for j in 0..<(geo.rows * 2) {
             let p = geo.center(side: .center, r: j, d: 0)
-            let outerX = j % 2 == 0 ? p.x - geo.cell * 0.62 : p.x + geo.cell * 0.62
+            let outerX = j % 2 == 0 ? p.x - geo.cell / 2 : p.x + geo.cell / 2
             ctx.addLine(to: CGPoint(x: origin.x + outerX, y: origin.y + p.y))
         }
         ctx.addLine(to: CGPoint(x: origin.x + geo.cx,
