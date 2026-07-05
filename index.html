@@ -287,14 +287,14 @@ function renderGrid() {
       frag.appendChild(t);
     }
   }
-  // 中央の上ル目（向きが一目ずつ交互のマス。／=右半面、＼=左半面。塗るとその段に ⬆ が付く）
-  const E = CELL * 0.70, F = CELL * 0.36;  // 通常の目と同面積
+  // 中央の上ル目（／=右半面、＼=左半面が上辺・下辺を共有して重ならず交互に下へ進む。塗るとその段に ⬆ が付く）
+  const H = CELL / 2;
   for (let j = 0; j < app.rows * 2; j++) {
     const x = g.cx;
     const y = g.y0 + j * CELL + CELL / 2;
     const pts = j % 2 === 0
-      ? `${x-E+F},${y+E+F} ${x+E+F},${y-E+F} ${x+E-F},${y-E-F} ${x-E-F},${y+E-F}`   // ／
-      : `${x-E+F},${y-E-F} ${x+E+F},${y+E-F} ${x+E-F},${y+E+F} ${x-E-F},${y-E+F}`;  // ＼
+      ? `${x+CELL},${y-H} ${x},${y-H} ${x-CELL},${y+H} ${x},${y+H}`   // ／
+      : `${x-CELL},${y-H} ${x},${y-H} ${x+CELL},${y+H} ${x},${y+H}`;  // ＼
     const p = document.createElementNS(NS, "polygon");
     p.setAttribute("points", pts);
     p.setAttribute("class", "cell");
@@ -305,21 +305,6 @@ function renderGrid() {
     cellIndex[`C-${j}-0`] = p;
     frag.appendChild(p);
   }
-  // 書籍風のジグザグ線（マスの向きと逆側を一目ずつ縫う）
-  let zig = `M ${g.cx} ${g.y0} `;
-  for (let j = 0; j < app.rows * 2; j++) {
-    const x = g.cx + (j % 2 === 0 ? -CELL / 2 : CELL / 2);  // 45°
-    const y = g.y0 + j * CELL + CELL / 2;
-    zig += `L ${x} ${y} `;
-  }
-  zig += `L ${g.cx} ${g.y0 + app.rows * 2 * CELL} `;
-  const zigzag = document.createElementNS(NS, "path");
-  zigzag.setAttribute("d", zig);
-  zigzag.setAttribute("fill", "none");
-  zigzag.setAttribute("stroke", "#8a8270");
-  zigzag.setAttribute("stroke-width", "1.1");
-  zigzag.setAttribute("pointer-events", "none");
-  frag.appendChild(zigzag);
 
   gridSvg.appendChild(frag);
 }

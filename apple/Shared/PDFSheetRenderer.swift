@@ -99,17 +99,6 @@ struct PDFSheetRenderer {
             ctx.setLineWidth(0.4)
             ctx.strokePath()
         }
-        ctx.setStrokeColor(gray(0.45))
-        ctx.setLineWidth(0.8)
-        ctx.move(to: CGPoint(x: origin.x + geo.cx, y: origin.y + geo.y0))
-        for j in 0..<(geo.rows * 2) {
-            let p = geo.center(side: .center, r: j, d: 0)
-            let outerX = j % 2 == 0 ? p.x - geo.cell / 2 : p.x + geo.cell / 2
-            ctx.addLine(to: CGPoint(x: origin.x + outerX, y: origin.y + p.y))
-        }
-        ctx.addLine(to: CGPoint(x: origin.x + geo.cx,
-                                y: origin.y + geo.y0 + CGFloat(geo.rows * 2) * geo.cell))
-        ctx.strokePath()
     }
 
     private func diamond(at p: CGPoint, ctx: CGContext) {

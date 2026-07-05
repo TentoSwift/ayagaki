@@ -32,23 +32,22 @@ struct GridGeometry {
     }
 
     /// 中央目のマス（45°に傾いた平行四辺形）の4頂点。偶数=右半面（／）、奇数=左半面（＼）。
-    /// 通常の目（菱形、面積 2c²）と同じ面積になる寸法（8ef = 2c²）
+    /// 高さは1目分（c）で、上辺・下辺を隣の目と共有して互いに重ならず交互に下へ進む
     func centerBarCorners(_ j: Int) -> [CGPoint] {
         let p = center(side: .center, r: j, d: 0)
-        let e = cell * 0.70   // 長さの半分
-        let f = cell * 0.36   // 厚みの半分
+        let h = cell / 2
         if j % 2 == 0 {
-            // ／ 向き（軸 (1,-1)、法線 (1,1)）
-            return [CGPoint(x: p.x - e + f, y: p.y + e + f),
-                    CGPoint(x: p.x + e + f, y: p.y - e + f),
-                    CGPoint(x: p.x + e - f, y: p.y - e - f),
-                    CGPoint(x: p.x - e - f, y: p.y + e - f)]
+            // ／（右半面）: 上辺が右側、下辺が左側
+            return [CGPoint(x: p.x + cell, y: p.y - h),
+                    CGPoint(x: p.x, y: p.y - h),
+                    CGPoint(x: p.x - cell, y: p.y + h),
+                    CGPoint(x: p.x, y: p.y + h)]
         } else {
-            // ＼ 向き（軸 (1,1)、法線 (1,-1)）
-            return [CGPoint(x: p.x - e + f, y: p.y - e - f),
-                    CGPoint(x: p.x + e + f, y: p.y + e - f),
-                    CGPoint(x: p.x + e - f, y: p.y + e + f),
-                    CGPoint(x: p.x - e - f, y: p.y - e + f)]
+            // ＼（左半面）: 上辺が左側、下辺が右側
+            return [CGPoint(x: p.x - cell, y: p.y - h),
+                    CGPoint(x: p.x, y: p.y - h),
+                    CGPoint(x: p.x + cell, y: p.y + h),
+                    CGPoint(x: p.x, y: p.y + h)]
         }
     }
 
