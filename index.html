@@ -277,8 +277,7 @@ function renderGrid() {
     }
     // ⬆（中央で上ル）の印を中央寄りの目に表示
     for (const [side, cj] of [["L", 2 * r + 1], ["R", 2 * r]]) {
-      const opp = side === "R" ? "L" : "R";
-      if ((app.cells[opp][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) {
+      if ((app.cells.C[cj] || 0) > 0) {
         const c = cellCenter(g, side, r, 0);
         const t = document.createElementNS(NS, "text");
         t.setAttribute("x", c.x); t.setAttribute("y", c.y + CELL * 0.38);
@@ -323,17 +322,27 @@ function pushUndo() {
   if (undoStack.length > 100) undoStack.shift();
 }
 
+function syncArrowFromCenterColor(side, r) {
+  // 左の中央列の色 → 右半面の ⬆（C[2r]）、右 → 左半面（C[2r+1]）
+  const j = side === "L" ? 2 * r : 2 * r + 1;
+  app.cells.C[j] = (app.cells[side][r][0] || 0) > 0 ? 1 : 0;
+}
 function paintCell(side, r, d) {
   const v = app.cur;
   let changed = false;
   if (side === "C") {
-    // 中央のジグザグ目（左右共通なので対称塗りは不要）
-    if (app.cells.C[r] !== v) { app.cells.C[r] = v; updateCellFill("C", r, 0); changed = true; }
+    if (app.cells.C[r] !== v) { app.cells.C[r] = v; changed = true; }
   } else {
-    if (app.cells[side][r][d] !== v) { app.cells[side][r][d] = v; updateCellFill(side, r, d); changed = true; }
+    if (app.cells[side][r][d] !== v) {
+      app.cells[side][r][d] = v; updateCellFill(side, r, d); changed = true;
+      if (d === 0) syncArrowFromCenterColor(side, r);
+    }
     if (app.sym) {
       const other = side === "L" ? "R" : "L";
-      if (app.cells[other][r][d] !== v) { app.cells[other][r][d] = v; updateCellFill(other, r, d); changed = true; }
+      if (app.cells[other][r][d] !== v) {
+        app.cells[other][r][d] = v; updateCellFill(other, r, d); changed = true;
+        if (d === 0) syncArrowFromCenterColor(other, r);
+      }
     }
   }
   if (changed) scheduleDerived();
@@ -469,10 +478,9 @@ function sideTexts(side) {
       text = prefix + ayaName(slots);
       opRun++;
     }
-    // 中央の2列（d=0）の色は「反対側から来て上ル糸」なので、⬆は反対側の半面に付く。手動指定（C）も併用
+    // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
     const cj = side === "R" ? 2 * r : 2 * r + 1;
-    const opp = side === "R" ? "L" : "R";
-    if ((app.cells[opp][r][0] || 0) > 0 || (app.cells.C[cj] || 0) > 0) text += "⬆";
+    if ((app.cells.C[cj] || 0) > 0) text += "⬆";
     texts.push(text);
     prev = slots;
   }

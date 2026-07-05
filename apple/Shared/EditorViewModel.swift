@@ -104,9 +104,11 @@ final class EditorViewModel: ObservableObject {
         guard d >= 0, d < cols else { return }
         if cells.value(side: side, r: r, d: d) != currentColor {
             cells.set(side: side, r: r, d: d, to: currentColor)
+            if d == 0 { cells.syncArrowFromCenterColor(side: side, row: r) }
         }
         if symmetric, cells.value(side: side.opposite, r: r, d: d) != currentColor {
             cells.set(side: side.opposite, r: r, d: d, to: currentColor)
+            if d == 0 { cells.syncArrowFromCenterColor(side: side.opposite, row: r) }
         }
     }
 

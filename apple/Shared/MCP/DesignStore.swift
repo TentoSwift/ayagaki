@@ -133,8 +133,17 @@ final class DesignStore: @unchecked Sendable {
                     throw StoreError("cells.C は \(s.rows * 2) 個（各段2目: index 2r=右の上ル目, 2r+1=左の上ル目）・値 0〜3 で指定してください")
                 }
             }
-            s.cells = CellGrid(L: cellsL, R: cellsR,
-                               C: cellsC ?? [Int](repeating: 0, count: s.rows * 2))
+            var derivedC = cellsC
+            if derivedC == nil {
+                // C 未指定なら中央の2列（d=0）の色から ⬆ を導出（左の色→右半面）
+                var c = [Int](repeating: 0, count: s.rows * 2)
+                for r in 0..<s.rows {
+                    c[2 * r] = cellsL[r][0] > 0 ? 1 : 0
+                    c[2 * r + 1] = cellsR[r][0] > 0 ? 1 : 0
+                }
+                derivedC = c
+            }
+            s.cells = CellGrid(L: cellsL, R: cellsR, C: derivedC)
                 .resized(rows: s.rows, cols: cols)  // 旧形式の C を展開
             design.apply(snapshot: s)
             try saveAndNotify(design)
@@ -181,6 +190,7 @@ final class DesignStore: @unchecked Sendable {
                     for r in (rowFrom - 1)...(rowTo - 1) {
                         for pos in posFrom...posTo {
                             s.cells.set(side: side, r: r, d: pos - 1, to: color)
+                            if pos == 1 { s.cells.syncArrowFromCenterColor(side: side, row: r) }
                         }
                     }
                 }

@@ -95,16 +95,22 @@ struct CellGrid: Codable, Equatable {
         }
     }
 
-    /// その段の記号に ⬆（中央で上ル）を付けるか。
-    /// 中央の2列（d=0）に色が置かれた段は自動で ⬆（反対側の半面に付く —
-    /// 中央の目に見えるのは「反対側から来て上ル糸」のため）。手動指定（C）も併用
+    /// その段の記号に ⬆（中央で上ル）を付けるか（C が唯一の情報源。
+    /// 中央の2列 d=0 への塗り/消しが自動で C を書き込み、タップでも上書きできる）
     func hasArrow(side: BraidSide, row: Int) -> Bool {
-        let oppositePlane = side == .right ? L : R
-        if row < oppositePlane.count, (oppositePlane[row].first ?? 0) > 0 { return true }
         guard let C else { return false }
         if C.count == L.count { return row < C.count && C[row] > 0 }  // 旧形式
         let j = side == .right ? 2 * row : 2 * row + 1
         return j < C.count && C[j] > 0
+    }
+
+    /// 中央の2列（d=0）への塗りに応じて ⬆ フラグを書き込む。
+    /// 左の中央列の色 → 右半面の ⬆（中央の目＝反対側から来て上ル糸のため）
+    mutating func syncArrowFromCenterColor(side: BraidSide, row: Int) {
+        guard side != .center else { return }
+        let value = value(side: side, r: row, d: 0) > 0 ? 1 : 0
+        let j = side == .left ? 2 * row : 2 * row + 1  // 反対側の半面の ⬆
+        set(side: .center, r: j, d: 0, to: value)
     }
 }
 
