@@ -106,14 +106,17 @@ enum Notation {
     }
 
     /// 1段・片面ぶんの記号（書籍 4-13 の形式）。
+    /// 綾の読みで数えるのは「入れかえの目」＝1目おき（偶数目盛りの目、60玉=6目／68玉=7目）のみ。
     /// 上n＝n目入れかえて浮かせる／下n＝n目そのまま。末尾の「下」は省略。
     /// 入れかえなしの段は「ナミ」。前の段で入れかえていた糸が元に戻る「下」の目数には丸を付ける。
     /// rowCells は d=0（中央）〜 N-1（外端）
     static func rowText(_ rowCells: [Int], previous: [Int]?, dir: ReadDirection) -> String {
         func ordered(_ cells: [Int]) -> [Bool] {
+            // 偶数目盛り（d=1,3,5,…）の目だけを中央側から取り出す
+            let sampled = stride(from: 1, to: cells.count, by: 2).map { cells[$0] > 0 }
             switch dir {
-            case .edge:   return cells.reversed().map { $0 > 0 }
-            case .center: return cells.map { $0 > 0 }
+            case .edge:   return sampled.reversed()
+            case .center: return sampled
             }
         }
         let flags = ordered(rowCells)

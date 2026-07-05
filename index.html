@@ -156,7 +156,8 @@
       </div>
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
-        記号の意味 — <b>上n</b>：n目入れかえて色糸を浮かせる／<b>下n</b>：n目そのまま（末尾は省略）／<b>丸数字</b>：入れかえた糸が元に戻る／<b>ナミ</b>：入れかえなし。
+        記号の意味 — <b>上n</b>：n目入れかえて色糸を浮かせる／<b>下n</b>：n目そのまま（末尾は省略）／<b>丸数字</b>：入れかえた糸が元に戻る／<b>ナミ</b>：入れかえなし。<br>
+        数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。
       </div>
     </div>
 
@@ -376,8 +377,10 @@ function circled(n) {
 }
 function rowNotation(side, r) {
   const N = cols();
+  // 綾の読みで数えるのは「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目）のみ
   const idx = [];
-  for (let k = 0; k < N; k++) idx.push(app.readDir === "edge" ? N - 1 - k : k); // d列の走査順
+  for (let d = 1; d < N; d += 2) idx.push(d);
+  if (app.readDir === "edge") idx.reverse();
   const seq = idx.map(d => (app.cells[side][r][d] > 0 ? 1 : 0));
   const prev = r > 0 ? idx.map(d => (app.cells[side][r - 1][d] > 0 ? 1 : 0)) : null;
 
