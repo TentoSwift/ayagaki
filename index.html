@@ -460,14 +460,15 @@ function sideTexts(side) {
         text = "ナミ";
         isBridge = true;
       } else {
-        text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ";
+        // 数字は片面の目数（60玉=13、68玉=15）が上限
+        text = opRun > 0 ? circledRange(2, Math.min(opRun + 2, N)) + "ナミ" : "ナミ";
         opRun = 0;
       }
     } else {
       let prefix = "";
       if (prev && opRun >= 2) {
         const added = slots.filter((v, i) => v && !prev[i]).length;
-        if (added >= 2) prefix = plainList(2, opRun);
+        if (added >= 2) prefix = plainList(2, Math.min(opRun, N));
       }
       text = prefix + ayaName(slots);
       opRun++;

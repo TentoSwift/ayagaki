@@ -219,14 +219,16 @@ enum Notation {
                     text = "ナミ"
                     isBridge = true
                 } else {
-                    text = opRun > 0 ? circledRange(2, opRun + 2) + "ナミ" : "ナミ"
+                    // 数字は片面の目数（60玉=13、68玉=15）が上限
+                    let cap = row.count
+                    text = opRun > 0 ? circledRange(2, min(opRun + 2, cap)) + "ナミ" : "ナミ"
                     opRun = 0
                 }
             } else {
                 var prefix = ""
                 if let prev = prevSlots, opRun >= 2 {
                     let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
-                    if added >= 2 { prefix = plainList(2, opRun) }
+                    if added >= 2 { prefix = plainList(2, min(opRun, row.count)) }
                 }
                 text = prefix + ayaName(slots)
                 opRun += 1
