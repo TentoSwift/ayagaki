@@ -129,6 +129,18 @@ final class EditorViewModel: ObservableObject {
         scheduleSave()
     }
 
+    /// 記号表のタップで ⬆（中央で上ル）をまとめて切り替える
+    func toggleArrows(_ range: ClosedRange<Int>, side: BraidSide) {
+        guard side != .center else { return }
+        pushUndo()
+        let anyOff = range.contains { !cells.hasArrow(side: side, row: $0) }
+        for r in range where r < rowCount {
+            let j = side == .right ? 2 * r : 2 * r + 1
+            cells.set(side: .center, r: j, d: 0, to: anyOff ? 1 : 0)
+        }
+        scheduleSave()
+    }
+
     // MARK: 設定変更
 
     func setTama(_ t: Int) {

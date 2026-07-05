@@ -157,7 +157,7 @@
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
         記号の意味 — <b>綾名</b>：ナミ／上n（=上n下(6−n)の手取り）等／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
-        数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。
+        数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。記号表の左右の記号をタップすると ⬆（中央で上ル）を切り替えられます。
       </div>
     </div>
 
@@ -413,6 +413,22 @@ function ayaName(slots) {
   const omitOnes = runs.length >= 3;
   return runs.map(x => (omitOnes && x.n === 1) ? (x.f ? "上" : "下") : (x.f ? "上" : "下") + x.n).join("");
 }
+/* 記号表のタップで ⬆（中央で上ル）をまとめて切り替える */
+function toggleArrows(from, to, side) {
+  pushUndo();
+  let anyOff = false;
+  for (let r = from; r <= to; r++) {
+    const j = side === "R" ? 2 * r : 2 * r + 1;
+    if (!(app.cells.C[j] > 0)) anyOff = true;
+  }
+  for (let r = from; r <= to; r++) {
+    const j = side === "R" ? 2 * r : 2 * r + 1;
+    app.cells.C[j] = anyOff ? 1 : 0;
+  }
+  scheduleDerived();
+  scheduleAutosave();
+}
+
 function sideTexts(side) {
   const N = cols();
   const idx = [];
@@ -467,9 +483,11 @@ function renderNotation() {
   for (const gp of groups) {
     const tr = document.createElement("tr");
     const seg = gp.from === gp.to ? `${gp.from + 1}` : `${gp.from + 1}〜${gp.to + 1}`;
-    tr.innerHTML = `<td class="seg">${seg}</td><td>${gp.L}</td><td>${gp.R}</td>`;
+    tr.innerHTML = `<td class="seg">${seg}</td><td class="tapL" style="cursor:pointer">${gp.L}</td><td class="tapR" style="cursor:pointer">${gp.R}</td>`;
     tr.addEventListener("mouseenter", () => highlightRows(gp.from, gp.to, true));
     tr.addEventListener("mouseleave", () => highlightRows(gp.from, gp.to, false));
+    tr.querySelector(".tapL").addEventListener("click", () => toggleArrows(gp.from, gp.to, "L"));
+    tr.querySelector(".tapR").addEventListener("click", () => toggleArrows(gp.from, gp.to, "R"));
     tbl.appendChild(tr);
   }
   notationDiv.innerHTML = "";

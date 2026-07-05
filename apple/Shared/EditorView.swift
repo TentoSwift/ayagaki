@@ -180,7 +180,7 @@ struct EditorView: View {
     }
 
     private var legend: some View {
-        Text("綾名：ナミ／上n＝上n下(6−n)の手取り ／ 先頭の数字：糸交換（上下段の糸を入れかえる位置）／ 丸数字：入れかえて元の色に戻す")
+        Text("綾名：ナミ／上n＝上n下(6−n)の手取り ／ 先頭の数字：糸交換 ／ 丸数字：元の色に戻す ／ 記号をタップで ⬆（中央で上ル）を切替")
             .font(.caption2)
             .foregroundColor(.secondary)
     }

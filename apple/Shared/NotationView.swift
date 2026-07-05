@@ -5,6 +5,8 @@ struct NotationTable: View {
     var groups: [NotationGroup]
     var selected: ClosedRange<Int>? = nil
     var onTap: ((NotationGroup) -> Void)? = nil
+    /// 左右の記号セルをタップしたとき（⬆ の切り替え）。nil なら行全体タップ＝onTap
+    var onToggleArrow: ((NotationGroup, BraidSide) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,18 +19,26 @@ struct NotationTable: View {
                         .font(.caption.weight(.semibold))
                         .foregroundColor(.accentColor)
                         .frame(width: 56, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onTap?(g) }
                     Text(g.left)
                         .font(.caption)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if let onToggleArrow { onToggleArrow(g, .left) } else { onTap?(g) }
+                        }
                     Text(g.right)
                         .font(.caption)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if let onToggleArrow { onToggleArrow(g, .right) } else { onTap?(g) }
+                        }
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
                 .background(isSelected ? Color.red.opacity(0.12) : Color.clear)
-                .contentShape(Rectangle())
-                .onTapGesture { onTap?(g) }
                 Divider()
             }
         }
@@ -59,6 +69,9 @@ struct NotationView: View {
             onTap: interactive ? { g in
                 let range = g.from...g.to
                 vm.highlighted = (vm.highlighted == range) ? nil : range
+            } : nil,
+            onToggleArrow: interactive ? { g, side in
+                vm.toggleArrows(g.from...g.to, side: side)
             } : nil)
     }
 }
