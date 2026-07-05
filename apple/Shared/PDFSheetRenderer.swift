@@ -81,24 +81,18 @@ struct PDFSheetRenderer {
                      size: 7, bold: false, color: gray(0.45), ctx: ctx)
         }
 
-        // 中央の上ル目（向きが一目ずつ交互のマス）とジグザグ線
+        // 中央のジグザグ線（45°・一目ずつ左右に振れる。書籍 4-14 の中央線）
+        ctx.setStrokeColor(gray(0.45))
+        ctx.setLineWidth(0.8)
+        ctx.move(to: CGPoint(x: origin.x + geo.cx, y: origin.y + geo.y0))
         for j in 0..<(geo.rows * 2) {
-            let corners = geo.centerBarCorners(j).map {
-                CGPoint(x: origin.x + $0.x, y: origin.y + $0.y)
-            }
-            let v = snapshot.cells.value(side: .center, r: j, d: 0)
-            ctx.beginPath()
-            ctx.addLines(between: corners)
-            ctx.closePath()
-            ctx.setFillColor(colors[min(max(v, 0), colors.count - 1)])
-            ctx.fillPath()
-            ctx.beginPath()
-            ctx.addLines(between: corners)
-            ctx.closePath()
-            ctx.setStrokeColor(line)
-            ctx.setLineWidth(0.4)
-            ctx.strokePath()
+            let x = geo.cx + (j % 2 == 0 ? -geo.cell / 2 : geo.cell / 2)
+            ctx.addLine(to: CGPoint(x: origin.x + x,
+                                    y: origin.y + geo.y0 + CGFloat(j) * geo.cell + geo.cell / 2))
         }
+        ctx.addLine(to: CGPoint(x: origin.x + geo.cx,
+                                y: origin.y + geo.y0 + CGFloat(geo.rows * 2) * geo.cell))
+        ctx.strokePath()
     }
 
     private func diamond(at p: CGPoint, ctx: CGContext) {

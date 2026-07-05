@@ -64,16 +64,6 @@ struct GridGeometry {
 
     /// タッチ位置 → セル（菱形の内包判定つき）
     func hitTest(_ p: CGPoint) -> (side: BraidSide, r: Int, d: Int)? {
-        // 中央の上ル目（各段2目・向き交互のマス）
-        if abs(p.x - cx) <= cell * 0.8 {
-            let jEst = Int(((p.y - y0 - cell / 2) / cell).rounded())
-            for j in (jEst - 1)...(jEst + 1) where j >= 0 && j < rows * 2 {
-                let c = center(side: .center, r: j, d: 0)
-                if abs(p.y - c.y) <= cell / 2 {
-                    return (.center, j, 0)
-                }
-            }
-        }
         let side: BraidSide = p.x >= cx ? .right : .left
         let dx = abs(p.x - cx)
         let dEst = Int((dx / cell).rounded()) - 1

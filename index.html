@@ -287,24 +287,20 @@ function renderGrid() {
       frag.appendChild(t);
     }
   }
-  // 中央の上ル目（／=右半面、＼=左半面が上辺・下辺を共有して重ならず交互に下へ進む。塗るとその段に ⬆ が付く）
-  const H = CELL / 2;
+  // 中央のジグザグ線（45°・一目ずつ左右に振れる。書籍 4-14 の中央線）
+  let zig = `M ${g.cx} ${g.y0} `;
   for (let j = 0; j < app.rows * 2; j++) {
-    const x = g.cx;
-    const y = g.y0 + j * CELL + CELL / 2;
-    const pts = j % 2 === 0
-      ? `${x+CELL},${y-H} ${x},${y-H} ${x-CELL},${y+H} ${x},${y+H}`   // ／
-      : `${x-CELL},${y-H} ${x},${y-H} ${x+CELL},${y+H} ${x},${y+H}`;  // ＼
-    const p = document.createElementNS(NS, "polygon");
-    p.setAttribute("points", pts);
-    p.setAttribute("class", "cell");
-    p.setAttribute("stroke", "#b8b096");
-    p.setAttribute("stroke-width", "0.6");
-    p.dataset.side = "C"; p.dataset.r = j; p.dataset.d = 0;
-    p.setAttribute("fill", app.palette[app.cells.C[j]] || app.palette[0]);
-    cellIndex[`C-${j}-0`] = p;
-    frag.appendChild(p);
+    const x = g.cx + (j % 2 === 0 ? -CELL / 2 : CELL / 2);
+    zig += `L ${x} ${g.y0 + j * CELL + CELL / 2} `;
   }
+  zig += `L ${g.cx} ${g.y0 + app.rows * 2 * CELL} `;
+  const zigzag = document.createElementNS(NS, "path");
+  zigzag.setAttribute("d", zig);
+  zigzag.setAttribute("fill", "none");
+  zigzag.setAttribute("stroke", "#8a8270");
+  zigzag.setAttribute("stroke-width", "1.1");
+  zigzag.setAttribute("pointer-events", "none");
+  frag.appendChild(zigzag);
 
   gridSvg.appendChild(frag);
 }
@@ -544,9 +540,13 @@ function renderPreview() {
         addDiamond(x, y, color);
       }
     }
-    // 中央の隙間（その段の上ル目の色で埋める）
+    // 中央の隙間（隣接4マスの多数決で補間）
     if (rr < totalRows - 1) {
-      const val = Math.max(app.cells.C[2*r] || 0, app.cells.C[2*r+1] || 0);
+      const rNext = (rr + 1) % app.rows;
+      const around = [app.cells.L[r][0], app.cells.R[r][0], app.cells.L[rNext][0], app.cells.R[rNext][0]];
+      const counts = {};
+      for (const v of around) counts[v] = (counts[v] || 0) + 1;
+      const val = +Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
       addDiamond(cx, y0 + rr * 2 * S + S, app.palette[val] || app.palette[0]);
     }
   }

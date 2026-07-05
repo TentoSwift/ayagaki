@@ -65,16 +65,14 @@ struct GridCanvasView: View {
             ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yOuter), anchor: .leading)
         }
 
-        // 中央の上ル目（向きが一目ずつ交互のマス。塗ると ⬆ が付く）
+        // 中央のジグザグ線（45°・一目ずつ左右に振れる。書籍 4-14 の中央線）
+        var zigzag = Path()
+        zigzag.move(to: CGPoint(x: geo.cx, y: geo.y0))
         for j in 0..<(geo.rows * 2) {
-            let corners = geo.centerBarCorners(j)
-            var path = Path()
-            path.move(to: corners[0])
-            for p in corners.dropFirst() { path.addLine(to: p) }
-            path.closeSubpath()
-            let v = cells.value(side: .center, r: j, d: 0)
-            ctx.fill(path, with: .color(colors[min(max(v, 0), colors.count - 1)]))
-            ctx.stroke(path, with: .color(gridLine), lineWidth: 0.5)
+            let x = geo.cx + (j % 2 == 0 ? -geo.cell / 2 : geo.cell / 2)
+            zigzag.addLine(to: CGPoint(x: x, y: geo.y0 + CGFloat(j) * geo.cell + geo.cell / 2))
         }
+        zigzag.addLine(to: CGPoint(x: geo.cx, y: geo.y0 + CGFloat(geo.rows * 2) * geo.cell))
+        ctx.stroke(zigzag, with: .color(.secondary.opacity(0.6)), lineWidth: 1.0)
     }
 }
