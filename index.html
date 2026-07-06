@@ -394,6 +394,7 @@ function repaintAll() {
      （例: 上1 → ②ナミ）。飛びの数字は+2で戻す（2.3 → ④⑤）
    ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
    ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
+   ・偶数列（縦に進む列 d=2,4,…）は糸交換のみ: 色のある段に番号 d+1 を書き、2段先に+2の丸数字で戻す
    ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
    ・入れかえの目が一度に2目以上増える段 → 「2.3.」等の糸交換を前置（6個以上は「2〜M.」に圧縮）
    ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
@@ -417,14 +418,13 @@ function circledList(nums) {
   if (nums.length === last - first + 1) return circledRange(first, last);
   return nums.map(circled).join("");
 }
-function plainList(from, to) {
-  // 5個までは「2.3.4.5.6.」の並記、6個以上は「2〜11.」に範囲圧縮（書籍 4-16）。
-  // 末尾のピリオドが綾名との区切り
-  if (to < from) return "";
-  if (to - from + 1 >= 6) return `${from}〜${to}.`;
-  const parts = [];
-  for (let i = from; i <= to; i++) parts.push(i);
-  return parts.join(".") + ".";
+function plainNumbers(nums) {
+  // 糸交換の番号列（昇順前提）。全体が連続で6個以上なら「2〜11.」に範囲圧縮（書籍 4-16）、
+  // それ以外は「3.5.7.」の並記。末尾のピリオドが綾名との区切り
+  if (!nums.length) return "";
+  const first = nums[0], last = nums[nums.length - 1];
+  if (nums.length >= 6 && nums.length === last - first + 1) return `${first}〜${last}.`;
+  return nums.join(".") + ".";
 }
 function ayaName(slots) {
   if (!slots.some(Boolean)) return "ナミ";
@@ -469,12 +469,20 @@ function sideTexts(side) {
   let hadArrow = false;          // ブロックが手取りの⬆を含むか
   const sched = Array.from({ length: app.rows }, () => new Set());  // 各段で戻す対（先の段に予約）
   for (let r = 0; r < app.rows; r++) {
-    // 入れかえの目（d 奇数）とすぐ外側の目（d+1）をペアで読む。どちらかに色があれば上がっている
-    const slots = idx.map(d => app.cells[side][r][d] > 0 || (app.cells[side][r][d + 1] || 0) > 0);
+    // 綾名は入れかえの目（d 奇数）だけを読む。偶数列（縦に進む列）は糸交換のみ
+    const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
     if (risesAtCenter) {
       // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
       if (r + 2 < app.rows) sched[r + 2].add(3);
+    }
+    // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2
+    const exchNums = new Set();
+    for (let d = 2; d < N; d += 2) {
+      if ((app.cells[side][r][d] || 0) > 0) {
+        exchNums.add(d + 1);
+        if (r + 2 < app.rows) sched[r + 2].add(d + 3);
+      }
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
     const cj = side === "R" ? 2 * r : 2 * r + 1;
@@ -484,7 +492,7 @@ function sideTexts(side) {
     if (!slots.some(Boolean)) {
       if (risesAtCenter) {
         // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
-        text = "ナミ";
+        text = plainNumbers([...exchNums].sort((a, b) => a - b)) + "ナミ";
         isBridge = true;
         hadCenter = true;
       } else {
@@ -497,23 +505,24 @@ function sideTexts(side) {
           pairs = [...blockPairs];
         }
         if (r + 1 < app.rows) pairs.forEach(p => sched[r + 1].add(p));
-        text = "ナミ";
+        text = plainNumbers([...exchNums].sort((a, b) => a - b)) + "ナミ";
         opRun = 0;
         blockPairs.clear();
         hadCenter = false;
         hadArrow = false;
       }
     } else {
-      let prefix = "";
       if (prev && opRun >= 2) {
         const added = slots.filter((v, i) => v && !prev[i]).length;
         if (added >= 2) {
-          prefix = plainList(2, Math.min(opRun, N));
-          // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④）
-          for (let p = 2; p <= Math.min(opRun, N); p++) blockPairs.add(p + 2);
+          for (let p = 2; p <= Math.min(opRun, N); p++) {
+            exchNums.add(p);
+            // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④）
+            blockPairs.add(p + 2);
+          }
         }
       }
-      text = prefix + ayaName(slots);
+      text = plainNumbers([...exchNums].sort((a, b) => a - b)) + ayaName(slots);
       opRun++;
       if (hasArrow) hadArrow = true;
       if (risesAtCenter) hadCenter = true;

@@ -158,11 +158,9 @@ enum Notation {
     }
 
     /// 綾の読みで使う「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目／68玉=7目）。
-    /// すぐ外側の目（d+1）とペアで読み、どちらかに色があればその目は上がっているとみなす
+    /// 偶数列（縦に進む列）は綾名には入れない（糸交換のみ）
     private static func sampledSlots(_ rowCells: [Int], dir: ReadDirection) -> [Bool] {
-        let sampled = stride(from: 1, to: rowCells.count, by: 2).map { d in
-            rowCells[d] > 0 || (d + 1 < rowCells.count && rowCells[d + 1] > 0)
-        }
+        let sampled = stride(from: 1, to: rowCells.count, by: 2).map { rowCells[$0] > 0 }
         return dir == .edge ? sampled.reversed() : Array(sampled)
     }
 
@@ -203,12 +201,12 @@ enum Notation {
         return nums.map(circled).joined()
     }
 
-    /// 糸交換の番号列。5個までは「2.3.4.5.6.」の並記、6個以上は「2〜11.」に範囲圧縮（書籍 4-16）。
-    /// 末尾のピリオドが綾名との区切り
-    private static func plainList(_ from: Int, _ to: Int) -> String {
-        guard to >= from else { return "" }
-        if to - from + 1 >= 6 { return "\(from)〜\(to)." }
-        return (from...to).map(String.init).joined(separator: ".") + "."
+    /// 糸交換の番号列（昇順前提）。全体が連続で6個以上なら「2〜11.」に範囲圧縮（書籍 4-16）、
+    /// それ以外は「3.5.7.」の並記。末尾のピリオドが綾名との区切り
+    private static func plainNumbers(_ nums: [Int]) -> String {
+        guard let first = nums.first, let last = nums.last else { return "" }
+        if nums.count >= 6 && nums.count == last - first + 1 { return "\(first)〜\(last)." }
+        return nums.map(String.init).joined(separator: ".") + "."
     }
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
@@ -216,6 +214,7 @@ enum Notation {
     ///   （例: 上1 → ②ナミ）。飛びの数字は+2で戻す（2.3 → ④⑤）
     /// ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
     /// ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
+    /// ・偶数列（縦に進む列 d=2,4,…）は糸交換のみ: 色のある段に番号 d+1 を書き、2段先に+2の丸数字で戻す
     /// ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3.」等の糸交換を前置（6個以上は「2〜M.」に圧縮）
     /// ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
@@ -238,12 +237,18 @@ enum Notation {
                 // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
                 if r + 2 < rows { sched[r + 2].insert(3) }
             }
+            // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2
+            var exchNums = Set<Int>()
+            for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
+                exchNums.insert(d + 1)
+                if r + 2 < rows { sched[r + 2].insert(d + 3) }
+            }
             var text: String
             var isBridge = false
             if !slots.contains(true) {
                 if risesAtCenter {
                     // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
-                    text = "ナミ"
+                    text = plainNumbers(exchNums.sorted()) + "ナミ"
                     isBridge = true
                     hadCenter = true
                 } else {
@@ -256,23 +261,22 @@ enum Notation {
                         pairs = opRun > 0 ? blockPairs : []
                     }
                     if r + 1 < rows { sched[r + 1].formUnion(pairs) }
-                    text = "ナミ"
+                    text = plainNumbers(exchNums.sorted()) + "ナミ"
                     opRun = 0
                     blockPairs.removeAll()
                     hadCenter = false
                     hadArrow = false
                 }
             } else {
-                var prefix = ""
                 if let prev = prevSlots, opRun >= 2 {
                     let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
                     if added >= 2 {
-                        prefix = plainList(2, min(opRun, cap))
+                        exchNums.formUnion(2...min(opRun, cap))
                         // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④）
                         blockPairs.formUnion((2...min(opRun, cap)).map { $0 + 2 })
                     }
                 }
-                text = prefix + ayaName(slots)
+                text = plainNumbers(exchNums.sorted()) + ayaName(slots)
                 opRun += 1
                 if arrows?[r] == true { hadArrow = true }
                 if risesAtCenter { hadCenter = true }
