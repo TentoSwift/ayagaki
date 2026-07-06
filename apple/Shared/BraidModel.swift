@@ -211,6 +211,7 @@ enum Notation {
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
     /// ・上の操作（綾の手取りで目を上げる）には戻しを付けない。戻しが要るのは糸交換のみ
+    /// ・斜めに進んだ縞は、一番先の目の色が終わる段に、その場所の番号（d+1）で糸交換を書く（戻し不要）
     /// ・飛びの糸交換は+2の番号で、模様の終わりの1段先で戻す（2.3 → ④⑤）
     /// ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
     /// ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
@@ -229,6 +230,33 @@ enum Notation {
         var hadCenter = false        // ブロックが中央の色による上ルを含むか
         var hadArrow = false         // ブロックが手取りの⬆を含むか
         var sched = [Set<Int>](repeating: [], count: rows)  // 各段で戻す対（先の段に予約）
+        // 斜めに進んだ縞（入れかえの目を1目ずつ外へ移る色）の糸交換:
+        // 一番先の目の色が終わる段に、その場所の番号（d+1）を書く。戻しは不要
+        var tipNums = [Set<Int>](repeating: [], count: rows)
+        let cols = plane.first?.count ?? 0
+        for d in stride(from: 1, to: cols, by: 2) {
+            var runStart: Int? = nil
+            for r in 0...rows {
+                let colored = r < rows && plane[r][d] > 0
+                if colored && runStart == nil { runStart = r }
+                if !colored, let a = runStart {
+                    let b = r - 1
+                    // 内側（d-2、d=1 は中央）から続いてきた縞か
+                    let fromInner = d >= 3
+                        ? (plane[a][d-2] > 0 || (a > 0 && plane[a-1][d-2] > 0))
+                        : (centerRise?[a] == true || (a > 0 && centerRise?[a-1] == true))
+                    // 外側（d+2）へまだ続くか
+                    let toOuter = d + 2 < cols &&
+                        (plane[b][d+2] > 0 || (b + 1 < rows && plane[b+1][d+2] > 0))
+                    // 終端で内側が消えているか（広がる模様ではなく移動する縞）
+                    let innerGone = d >= 3 ? plane[b][d-2] == 0 : centerRise?[b] != true
+                    if fromInner && !toOuter && innerGone {
+                        tipNums[b].insert(min(d + 1, cols))
+                    }
+                    runStart = nil
+                }
+            }
+        }
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
             let cap = row.count
@@ -239,7 +267,7 @@ enum Notation {
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2。
             // 番号は片面の目数（60玉=13、68玉=15）が上限
-            var exchNums = Set<Int>()
+            var exchNums = tipNums[r]  // 斜めの縞の一番先の糸交換（戻しなし）
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
                 exchNums.insert(min(d + 1, cap))
                 if r + 2 < rows { sched[r + 2].insert(min(d + 3, cap)) }
