@@ -476,12 +476,13 @@ function sideTexts(side) {
       // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
       if (r + 2 < app.rows) sched[r + 2].add(3);
     }
-    // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2
+    // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2。
+    // 番号は片面の目数（60玉=13、68玉=15）が上限
     const exchNums = new Set();
     for (let d = 2; d < N; d += 2) {
       if ((app.cells[side][r][d] || 0) > 0) {
-        exchNums.add(d + 1);
-        if (r + 2 < app.rows) sched[r + 2].add(d + 3);
+        exchNums.add(Math.min(d + 1, N));
+        if (r + 2 < app.rows) sched[r + 2].add(Math.min(d + 3, N));
       }
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
@@ -517,8 +518,8 @@ function sideTexts(side) {
         if (added >= 2) {
           for (let p = 2; p <= Math.min(opRun, N); p++) {
             exchNums.add(p);
-            // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④）
-            blockPairs.add(p + 2);
+            // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④。片面の目数が上限）
+            blockPairs.add(Math.min(p + 2, N));
           }
         }
       }

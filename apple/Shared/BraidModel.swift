@@ -237,11 +237,12 @@ enum Notation {
                 // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
                 if r + 2 < rows { sched[r + 2].insert(3) }
             }
-            // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2
+            // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2。
+            // 番号は片面の目数（60玉=13、68玉=15）が上限
             var exchNums = Set<Int>()
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
-                exchNums.insert(d + 1)
-                if r + 2 < rows { sched[r + 2].insert(d + 3) }
+                exchNums.insert(min(d + 1, cap))
+                if r + 2 < rows { sched[r + 2].insert(min(d + 3, cap)) }
             }
             var text: String
             var isBridge = false
@@ -272,8 +273,8 @@ enum Notation {
                     let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
                     if added >= 2 {
                         exchNums.formUnion(2...min(opRun, cap))
-                        // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④）
-                        blockPairs.formUnion((2...min(opRun, cap)).map { $0 + 2 })
+                        // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④。片面の目数が上限）
+                        blockPairs.formUnion((2...min(opRun, cap)).map { min($0 + 2, cap) })
                     }
                 }
                 text = plainNumbers(exchNums.sorted()) + ayaName(slots)
