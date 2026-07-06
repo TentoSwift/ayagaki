@@ -200,10 +200,12 @@ enum Notation {
         return nums.map(circled).joined()
     }
 
-    /// 糸交換の番号列（2.3.4.5.6 形式）
+    /// 糸交換の番号列。5個までは「2.3.4.5.6.」の並記、6個以上は「2〜11.」に範囲圧縮（書籍 4-16）。
+    /// 末尾のピリオドが綾名との区切り
     private static func plainList(_ from: Int, _ to: Int) -> String {
         guard to >= from else { return "" }
-        return (from...to).map(String.init).joined(separator: ".") + " "
+        if to - from + 1 >= 6 { return "\(from)〜\(to)." }
+        return (from...to).map(String.init).joined(separator: ".") + "."
     }
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
@@ -212,7 +214,8 @@ enum Notation {
     /// ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
     /// ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
     /// ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
-    /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
+    /// ・入れかえの目が一度に2目以上増える段 → 「2.3.」等の糸交換を前置（6個以上は「2〜M.」に圧縮）
+    /// ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
     static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil,
                           centerRise: [Bool]? = nil) -> [String] {
@@ -273,7 +276,10 @@ enum Notation {
                 for (i, s) in slots.enumerated() where s { blockPairs.insert(i + 2) }
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
-            texts.append(circledList(sched[r].sorted()) + text)
+            // 丸数字と綾名の区切りはピリオド（書籍 4-16「②④.上6」。ナミの前は区切りなし）
+            var head = circledList(sched[r].sorted())
+            if !head.isEmpty && !text.hasPrefix("ナミ") { head += "." }
+            texts.append(head + text)
             if !isBridge { prevSlots = slots }
         }
         return texts

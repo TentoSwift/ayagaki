@@ -395,7 +395,8 @@ function repaintAll() {
    ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
    ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
    ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
-   ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置
+   ・入れかえの目が一度に2目以上増える段 → 「2.3.」等の糸交換を前置（6個以上は「2〜M.」に圧縮）
+   ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
    ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
 function circled(n) {
   return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : `(${n})`;
@@ -417,10 +418,13 @@ function circledList(nums) {
   return nums.map(circled).join("");
 }
 function plainList(from, to) {
+  // 5個までは「2.3.4.5.6.」の並記、6個以上は「2〜11.」に範囲圧縮（書籍 4-16）。
+  // 末尾のピリオドが綾名との区切り
   if (to < from) return "";
+  if (to - from + 1 >= 6) return `${from}〜${to}.`;
   const parts = [];
   for (let i = from; i <= to; i++) parts.push(i);
-  return parts.join(".") + " ";
+  return parts.join(".") + ".";
 }
 function ayaName(slots) {
   if (!slots.some(Boolean)) return "ナミ";
@@ -515,7 +519,10 @@ function sideTexts(side) {
       slots.forEach((v, i) => { if (v) blockPairs.add(i + 2); });
     }
     if (hasArrow) text += "⬆";
-    texts.push(circledList([...sched[r]].sort((a, b) => a - b)) + text);
+    // 丸数字と綾名の区切りはピリオド（書籍 4-16「②④.上6」。ナミの前は区切りなし）
+    let head = circledList([...sched[r]].sort((a, b) => a - b));
+    if (head && !text.startsWith("ナミ")) head += ".";
+    texts.push(head + text);
     if (!isBridge) prev = slots;
   }
   return texts;
