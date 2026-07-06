@@ -235,22 +235,25 @@ enum Notation {
         var tipNums = [Set<Int>](repeating: [], count: rows)
         let cols = plane.first?.count ?? 0
         for d in stride(from: 1, to: cols, by: 2) {
+            // 内側（d-2、d=1 は中央の上ル）に色があるか
+            func innerAt(_ r: Int) -> Bool {
+                guard r >= 0, r < rows else { return false }
+                return d >= 3 ? plane[r][d-2] > 0 : centerRise?[r] == true
+            }
             var runStart: Int? = nil
             for r in 0...rows {
                 let colored = r < rows && plane[r][d] > 0
                 if colored && runStart == nil { runStart = r }
                 if !colored, let a = runStart {
                     let b = r - 1
-                    // 内側（d-2、d=1 は中央）から続いてきた縞か
-                    let fromInner = d >= 3
-                        ? (plane[a][d-2] > 0 || (a > 0 && plane[a-1][d-2] > 0))
-                        : (centerRise?[a] == true || (a > 0 && centerRise?[a-1] == true))
-                    // 外側（d+2）へまだ続くか
+                    // 縞が内側から移ってきたか（直前の段か、1段おきの塗りなら2段前）
+                    let fromInner = innerAt(a - 1) || innerAt(a - 2)
+                    // 外側（d+2）へまだ続くか（1段おきの塗りも考慮して b+2 まで見る）
                     let toOuter = d + 2 < cols &&
-                        (plane[b][d+2] > 0 || (b + 1 < rows && plane[b+1][d+2] > 0))
-                    // 終端で内側が消えているか（広がる模様ではなく移動する縞）
-                    let innerGone = d >= 3 ? plane[b][d-2] == 0 : centerRise?[b] != true
-                    if fromInner && !toOuter && innerGone {
+                        (b...min(b + 2, rows - 1)).contains { plane[$0][d+2] > 0 }
+                    // 内側が縞の始まる前から終端まで塗られたままなら、広がる模様（4-15型）なので出さない
+                    let widening = innerAt(a - 1) && innerAt(b)
+                    if fromInner && !toOuter && !widening {
                         tipNums[b].insert(min(d + 1, cols))
                     }
                     runStart = nil

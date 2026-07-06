@@ -472,24 +472,29 @@ function sideTexts(side) {
   // 斜めに進んだ縞（入れかえの目を1目ずつ外へ移る色）の糸交換:
   // 一番先の目の色が終わる段に、その場所の番号（d+1）を書く。戻しは不要
   const tipNums = Array.from({ length: app.rows }, () => new Set());
-  const riseAt = r => (app.cells[opp][r] && (app.cells[opp][r][0] || 0) > 0);
+  const riseAt = r => r >= 0 && r < app.rows && (app.cells[opp][r][0] || 0) > 0;
   for (let d = 1; d < N; d += 2) {
+    // 内側（d-2、d=1 は中央の上ル）に色があるか
+    const innerAt = r => r >= 0 && r < app.rows &&
+      (d >= 3 ? app.cells[side][r][d - 2] > 0 : riseAt(r));
     let runStart = null;
     for (let r = 0; r <= app.rows; r++) {
       const colored = r < app.rows && app.cells[side][r][d] > 0;
       if (colored && runStart === null) runStart = r;
       if (!colored && runStart !== null) {
         const a = runStart, b = r - 1;
-        // 内側（d-2、d=1 は中央）から続いてきた縞か
-        const fromInner = d >= 3
-          ? (app.cells[side][a][d - 2] > 0 || (a > 0 && app.cells[side][a - 1][d - 2] > 0))
-          : (riseAt(a) || (a > 0 && riseAt(a - 1)));
-        // 外側（d+2）へまだ続くか
-        const toOuter = d + 2 < N &&
-          (app.cells[side][b][d + 2] > 0 || (b + 1 < app.rows && app.cells[side][b + 1][d + 2] > 0));
-        // 終端で内側が消えているか（広がる模様ではなく移動する縞）
-        const innerGone = d >= 3 ? app.cells[side][b][d - 2] === 0 : !riseAt(b);
-        if (fromInner && !toOuter && innerGone) tipNums[b].add(Math.min(d + 1, N));
+        // 縞が内側から移ってきたか（直前の段か、1段おきの塗りなら2段前）
+        const fromInner = innerAt(a - 1) || innerAt(a - 2);
+        // 外側（d+2）へまだ続くか（1段おきの塗りも考慮して b+2 まで見る）
+        let toOuter = false;
+        if (d + 2 < N) {
+          for (let rr = b; rr <= Math.min(b + 2, app.rows - 1); rr++) {
+            if (app.cells[side][rr][d + 2] > 0) { toOuter = true; break; }
+          }
+        }
+        // 内側が縞の始まる前から終端まで塗られたままなら、広がる模様（4-15型）なので出さない
+        const widening = innerAt(a - 1) && innerAt(b);
+        if (fromInner && !toOuter && !widening) tipNums[b].add(Math.min(d + 1, N));
         runStart = null;
       }
     }
