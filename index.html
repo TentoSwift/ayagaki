@@ -390,7 +390,8 @@ function repaintAll() {
 
 /* ===== 交換記号の生成（書籍 4-13 / 4-15 の形式） =====
    1段＝[糸交換リスト]＋[綾名]。綾の読みは「入れかえの目」＝1目おき（偶数目盛り、60玉=6目）のみ。
-   ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
+   ・⬆を伴う模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
+   ・⬆を伴わない模様の直後の空段 → 入れかわっていた目の糸番号だけ（例: 上1 → ②ナミ）
    ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置
    ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
 function circled(n) {
@@ -404,6 +405,13 @@ function circledRange(from, to) {
     return s;
   }
   return circled(from) + "〜" + circled(to);
+}
+function circledList(nums) {
+  // 丸数字の列（昇順前提。連続なら範囲形式、不連続は並記）
+  if (!nums.length) return "";
+  const first = nums[0], last = nums[nums.length - 1];
+  if (nums.length === last - first + 1) return circledRange(first, last);
+  return nums.map(circled).join("");
 }
 function plainList(from, to) {
   if (to < from) return "";
@@ -449,12 +457,17 @@ function sideTexts(side) {
   const opp = side === "R" ? "L" : "R";
   let opRun = 0;
   let prev = null;
+  const blockPairs = new Set();  // 模様の間に入れかわっていた目（スロット番号）
+  let blockHadRise = false;      // 模様のブロックが⬆（中央で上ル）を伴うか
   for (let r = 0; r < app.rows; r++) {
     const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
     const prevRise = r > 0 && (app.cells[opp][r - 1][0] || 0) > 0;
     // 中央の糸交換: 色を外した段（⬆の直後）にだけ「①」。置いた段の数字は表示しない
     const centerPrefix = (!risesAtCenter && prevRise) ? circled(1) : "";
+    // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
+    const cj = side === "R" ? 2 * r : 2 * r + 1;
+    const hasArrow = (app.cells.C[cj] || 0) > 0;
     let text;
     let isBridge = false;
     if (!slots.some(Boolean)) {
@@ -462,11 +475,22 @@ function sideTexts(side) {
         // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
         text = "ナミ";
         isBridge = true;
+        blockHadRise = true;
       } else {
-        // 数字は片面の目数（60玉=13、68玉=15）が上限
-        text = opRun > 0 ? centerPrefix + circledRange(2, Math.min(opRun + 2, N)) + "ナミ"
-                         : centerPrefix + "ナミ";
+        let revert = "";
+        if (opRun > 0) {
+          if (blockHadRise) {
+            // ⬆を伴うブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
+            revert = circledRange(2, Math.min(opRun + 2, N));
+          } else {
+            // ⬆なし: 入れかわっていた目の糸番号だけ戻す（スロットi＝糸i+2の対）
+            revert = circledList([...blockPairs].sort((a, b) => a - b).map(i => i + 2));
+          }
+        }
+        text = centerPrefix + revert + "ナミ";
         opRun = 0;
+        blockPairs.clear();
+        blockHadRise = false;
       }
     } else {
       let prefix = "";
@@ -476,10 +500,10 @@ function sideTexts(side) {
       }
       text = centerPrefix + prefix + ayaName(slots);
       opRun++;
+      if (hasArrow || risesAtCenter) blockHadRise = true;
+      slots.forEach((v, i) => { if (v) blockPairs.add(i); });
     }
-    // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
-    const cj = side === "R" ? 2 * r : 2 * r + 1;
-    if ((app.cells.C[cj] || 0) > 0) text += "⬆";
+    if (hasArrow) text += "⬆";
     texts.push(text);
     if (!isBridge) prev = slots;
   }

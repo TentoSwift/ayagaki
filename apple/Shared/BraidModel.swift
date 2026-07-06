@@ -193,6 +193,13 @@ enum Notation {
         return circled(from) + "〜" + circled(to)
     }
 
+    /// 丸数字の列（昇順前提。連続なら範囲形式、不連続は並記）
+    private static func circledList(_ nums: [Int]) -> String {
+        guard let first = nums.first, let last = nums.last else { return "" }
+        if nums.count == last - first + 1 { return circledRange(first, last) }
+        return nums.map(circled).joined()
+    }
+
     /// 糸交換の番号列（2.3.4.5.6 形式）
     private static func plainList(_ from: Int, _ to: Int) -> String {
         guard to >= from else { return "" }
@@ -200,7 +207,8 @@ enum Notation {
     }
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
-    /// ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
+    /// ・⬆を伴う模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
+    /// ・⬆を伴わない模様の直後の空段 → 入れかわっていた目の糸番号だけ（例: 上1 → ②ナミ）
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
     static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil,
@@ -208,6 +216,8 @@ enum Notation {
         var texts: [String] = []
         var opRun = 0          // 連続する入れかえ段数（中央で上がる段も含む）
         var prevSlots: [Bool]?
+        var blockPairs = Set<Int>()  // 模様の間に入れかわっていた目（スロット番号）
+        var blockHadRise = false     // 模様のブロックが⬆（中央で上ル）を伴うか
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
@@ -221,12 +231,22 @@ enum Notation {
                     // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
                     text = "ナミ"
                     isBridge = true
+                    blockHadRise = true
                 } else {
-                    // 数字は片面の目数（60玉=13、68玉=15）が上限
-                    let cap = row.count
-                    text = opRun > 0 ? centerPrefix + circledRange(2, min(opRun + 2, cap)) + "ナミ"
-                                     : centerPrefix + "ナミ"
+                    var revert = ""
+                    if opRun > 0 {
+                        if blockHadRise {
+                            // ⬆を伴うブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
+                            revert = circledRange(2, min(opRun + 2, row.count))
+                        } else {
+                            // ⬆なし: 入れかわっていた目の糸番号だけ戻す（スロットi＝糸i+2の対）
+                            revert = circledList(blockPairs.sorted().map { $0 + 2 })
+                        }
+                    }
+                    text = centerPrefix + revert + "ナミ"
                     opRun = 0
+                    blockPairs.removeAll()
+                    blockHadRise = false
                 }
             } else {
                 var prefix = ""
@@ -236,6 +256,8 @@ enum Notation {
                 }
                 text = centerPrefix + prefix + ayaName(slots)
                 opRun += 1
+                if arrows?[r] == true || risesAtCenter { blockHadRise = true }
+                for (i, s) in slots.enumerated() where s { blockPairs.insert(i) }
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
             texts.append(text)
