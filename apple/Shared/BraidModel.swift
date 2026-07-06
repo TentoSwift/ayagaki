@@ -210,7 +210,7 @@ enum Notation {
     /// ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び）を丸数字で戻す
     ///   （例: 上1 → ②ナミ）。飛びの数字は+2で戻す（2.3 → ④⑤）
     /// ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
-    /// ・中央の連続⬆は1段=1対。それぞれの⬆の段の2段先で番号k+1でばらして戻す（②③④…）
+    /// ・中央の糸交換（⬆）は、それぞれの段の2段先に②で戻す（毎回同じ番号）
     /// ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
@@ -223,18 +223,14 @@ enum Notation {
         var blockPairs = Set<Int>()  // ブロック内で交換した対の番号（目＝スロットi→対i+2、飛び＝番号+2）
         var hadCenter = false        // ブロックが中央の色による上ルを含むか
         var hadArrow = false         // ブロックが手取りの⬆を含むか
-        var riseRun = 0              // 連続する中央上ルの段数（この段を含む。k段目＝対kの交換）
         var sched = [Set<Int>](repeating: [], count: rows)  // 各段で戻す対（先の段に予約）
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
             let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
             if risesAtCenter {
-                riseRun += 1
-                // 中央の戻し: k段目の交換はその2段先で番号k+1で戻す（1段目→②）
-                if r + 2 < rows { sched[r + 2].insert(min(riseRun + 1, cap)) }
-            } else {
-                riseRun = 0
+                // 中央の戻し: 交換した段の2段先に②（毎回同じ番号）
+                if r + 2 < rows { sched[r + 2].insert(2) }
             }
             var text: String
             var isBridge = false
