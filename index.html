@@ -390,8 +390,8 @@ function repaintAll() {
 
 /* ===== 交換記号の生成（書籍 4-13 / 4-15 の形式） =====
    1段＝[糸交換リスト]＋[綾名]。綾の読みは「入れかえの目」＝1目おき（偶数目盛り、60玉=6目）のみ。
-   ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び）を丸数字で戻す
-     （例: 上1 → ②ナミ）。飛びの数字は+2で戻す（2.3 → ④⑤）
+   ・上の操作（綾の手取りで目を上げる）には戻しを付けない。戻しが要るのは糸交換のみ
+   ・飛びの糸交換は+2の番号で、模様の終わりの1段先で戻す（2.3 → ④⑤）
    ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
    ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
    ・偶数列（縦に進む列 d=2,4,…）は糸交換のみ: 色のある段に番号 d+1 を書き、2段先に+2の丸数字で戻す
@@ -464,7 +464,7 @@ function sideTexts(side) {
   const opp = side === "R" ? "L" : "R";
   let opRun = 0;
   let prev = null;
-  const blockPairs = new Set();  // ブロック内で交換した対の番号（目＝スロットi→対i+2、飛びの数字）
+  const blockPairs = new Set();  // ブロック内の飛びの糸交換で戻す番号（交換番号+2）
   let hadCenter = false;         // ブロックが中央の色による上ルを含むか
   let hadArrow = false;          // ブロックが手取りの⬆を含むか
   const sched = Array.from({ length: app.rows }, () => new Set());  // 各段で戻す対（先の段に予約）
@@ -502,7 +502,7 @@ function sideTexts(side) {
           // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
           for (let p = 2; p <= Math.min(opRun + 2, N); p++) pairs.push(p);
         } else if (opRun > 0) {
-          // 交換した対をそのまま戻す（同数）
+          // 上の操作には戻し不要。飛びの糸交換の分だけ戻す
           pairs = [...blockPairs];
         }
         if (r + 1 < app.rows) pairs.forEach(p => sched[r + 1].add(p));
@@ -527,7 +527,6 @@ function sideTexts(side) {
       opRun++;
       if (hasArrow) hadArrow = true;
       if (risesAtCenter) hadCenter = true;
-      slots.forEach((v, i) => { if (v) blockPairs.add(i + 2); });
     }
     if (hasArrow) text += "⬆";
     // 丸数字と綾名の区切りはピリオド（書籍 4-16「②④.上6」。ナミの前は区切りなし）

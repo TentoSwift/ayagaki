@@ -210,8 +210,8 @@ enum Notation {
     }
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
-    /// ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び）を丸数字で戻す
-    ///   （例: 上1 → ②ナミ）。飛びの数字は+2で戻す（2.3 → ④⑤）
+    /// ・上の操作（綾の手取りで目を上げる）には戻しを付けない。戻しが要るのは糸交換のみ
+    /// ・飛びの糸交換は+2の番号で、模様の終わりの1段先で戻す（2.3 → ④⑤）
     /// ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
     /// ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
     /// ・偶数列（縦に進む列 d=2,4,…）は糸交換のみ: 色のある段に番号 d+1 を書き、2段先に+2の丸数字で戻す
@@ -225,7 +225,7 @@ enum Notation {
         var texts: [String] = []
         var opRun = 0          // 連続する入れかえ段数（中央で上がる段も含む）
         var prevSlots: [Bool]?
-        var blockPairs = Set<Int>()  // ブロック内で交換した対の番号（目＝スロットi→対i+2、飛び＝番号+2）
+        var blockPairs = Set<Int>()  // ブロック内の飛びの糸交換で戻す番号（交換番号+2）
         var hadCenter = false        // ブロックが中央の色による上ルを含むか
         var hadArrow = false         // ブロックが手取りの⬆を含むか
         var sched = [Set<Int>](repeating: [], count: rows)  // 各段で戻す対（先の段に予約）
@@ -258,7 +258,7 @@ enum Notation {
                         // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
                         pairs = Set(2...min(opRun + 2, cap))
                     } else {
-                        // 交換した対をそのまま戻す（同数）
+                        // 上の操作には戻し不要。飛びの糸交換の分だけ戻す
                         pairs = opRun > 0 ? blockPairs : []
                     }
                     if r + 1 < rows { sched[r + 1].formUnion(pairs) }
@@ -281,7 +281,6 @@ enum Notation {
                 opRun += 1
                 if arrows?[r] == true { hadArrow = true }
                 if risesAtCenter { hadCenter = true }
-                for (i, s) in slots.enumerated() where s { blockPairs.insert(i + 2) }
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
             // 丸数字と綾名の区切りはピリオド（書籍 4-16「②④.上6」。ナミの前は区切りなし）
