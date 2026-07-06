@@ -211,6 +211,9 @@ enum Notation {
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
+            let prevRise = r > 0 && centerRise?[r - 1] == true
+            // 中央の糸交換: 色を外した段（⬆の直後）にだけ「①」。置いた段の数字は表示しない
+            let centerPrefix = (!risesAtCenter && prevRise) ? circled(1) : ""
             var text: String
             var isBridge = false
             if !slots.contains(true) {
@@ -221,7 +224,8 @@ enum Notation {
                 } else {
                     // 数字は片面の目数（60玉=13、68玉=15）が上限
                     let cap = row.count
-                    text = opRun > 0 ? circledRange(2, min(opRun + 2, cap)) + "ナミ" : "ナミ"
+                    text = opRun > 0 ? centerPrefix + circledRange(2, min(opRun + 2, cap)) + "ナミ"
+                                     : centerPrefix + "ナミ"
                     opRun = 0
                 }
             } else {
@@ -230,7 +234,7 @@ enum Notation {
                     let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
                     if added >= 2 { prefix = plainList(2, min(opRun, row.count)) }
                 }
-                text = prefix + ayaName(slots)
+                text = centerPrefix + prefix + ayaName(slots)
                 opRun += 1
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
