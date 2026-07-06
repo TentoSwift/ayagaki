@@ -392,6 +392,7 @@ function repaintAll() {
    1段＝[糸交換リスト]＋[綾名]。綾の読みは「入れかえの目」＝1目おき（偶数目盛り、60玉=6目）のみ。
    ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び・中央の連続⬆＝1段1対）を
      そのまま丸数字で戻す（例: 上1 → ②ナミ、飛び 2〜10 → ②〜⑩ナミ、中央⬆3段 → ①②③）
+   ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
    ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
    ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置
    ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
@@ -462,10 +463,11 @@ function sideTexts(side) {
   let hadCenter = false;         // ブロックが中央の色による上ルを含むか
   let hadArrow = false;          // ブロックが手取りの⬆を含むか
   let riseRun = 0;               // 直前まで連続した中央上ルの段数（1段＝1対の交換）
+  let pending = "";              // 確定した戻し。ひとつ段を飛ばした先に表示する
   for (let r = 0; r < app.rows; r++) {
     const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
-    // 中央の糸交換: 連続 k 段の上ルが終わった段に ①〜ⓚ（1段＝1対）
+    // 中央の糸交換: 連続 k 段の上ルが終わったら ①〜ⓚ（1段＝1対）
     const risePairs = [];
     if (!risesAtCenter && riseRun > 0)
       for (let p = 1; p <= Math.min(riseRun, N); p++) risePairs.push(p);
@@ -474,6 +476,7 @@ function sideTexts(side) {
     const hasArrow = (app.cells.C[cj] || 0) > 0;
     let text;
     let isBridge = false;
+    let newPending = "";
     if (!slots.some(Boolean)) {
       if (risesAtCenter) {
         // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
@@ -481,17 +484,16 @@ function sideTexts(side) {
         isBridge = true;
         hadCenter = true;
       } else {
-        let revert;
         if (opRun > 0 && hadArrow && !hadCenter) {
           // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
-          revert = circledRange(2, Math.min(opRun + 2, N));
+          newPending = circledRange(2, Math.min(opRun + 2, N));
         } else {
           // 交換した対をそのまま戻す（同数）。中央⬆の分と目の分は合算
           const pairs = new Set(risePairs);
           if (opRun > 0) blockPairs.forEach(p => pairs.add(p));
-          revert = circledList([...pairs].sort((a, b) => a - b));
+          newPending = circledList([...pairs].sort((a, b) => a - b));
         }
-        text = revert + "ナミ";
+        text = "ナミ";
         opRun = 0;
         blockPairs.clear();
         hadCenter = false;
@@ -506,14 +508,16 @@ function sideTexts(side) {
           for (let p = 2; p <= Math.min(opRun, N); p++) blockPairs.add(p);  // 飛びで交換した対も戻しに含める
         }
       }
-      text = circledList(risePairs) + prefix + ayaName(slots);
+      newPending = circledList(risePairs);
+      text = prefix + ayaName(slots);
       opRun++;
       if (hasArrow) hadArrow = true;
       if (risesAtCenter) hadCenter = true;
       slots.forEach((v, i) => { if (v) blockPairs.add(i + 2); });
     }
     if (hasArrow) text += "⬆";
-    texts.push(text);
+    texts.push(pending + text);
+    pending = newPending;
     if (!isBridge) prev = slots;
     riseRun = risesAtCenter ? riseRun + 1 : 0;
   }

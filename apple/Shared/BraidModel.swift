@@ -209,6 +209,7 @@ enum Notation {
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
     /// ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び・中央の連続⬆＝1段1対）を
     ///   そのまま丸数字で戻す（例: 上1 → ②ナミ、飛び 2〜10 → ②〜⑩ナミ、中央⬆3段 → ①②③）
+    /// ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
     /// ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
@@ -221,14 +222,16 @@ enum Notation {
         var hadCenter = false        // ブロックが中央の色による上ルを含むか
         var hadArrow = false         // ブロックが手取りの⬆を含むか
         var riseRun = 0              // 直前まで連続した中央上ルの段数（1段＝1対の交換）
+        var pending = ""             // 確定した戻し。ひとつ段を飛ばした先に表示する
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
             let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
-            // 中央の糸交換: 連続 k 段の上ルが終わった段に ①〜ⓚ（1段＝1対）
+            // 中央の糸交換: 連続 k 段の上ルが終わったら ①〜ⓚ（1段＝1対）
             let risePairs = (!risesAtCenter && riseRun > 0) ? Array(1...min(riseRun, cap)) : []
             var text: String
             var isBridge = false
+            var newPending = ""
             if !slots.contains(true) {
                 if risesAtCenter {
                     // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
@@ -236,17 +239,16 @@ enum Notation {
                     isBridge = true
                     hadCenter = true
                 } else {
-                    var revert: String
                     if opRun > 0 && hadArrow && !hadCenter {
                         // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
-                        revert = circledRange(2, min(opRun + 2, cap))
+                        newPending = circledRange(2, min(opRun + 2, cap))
                     } else {
                         // 交換した対をそのまま戻す（同数）。中央⬆の分と目の分は合算
                         var pairs = Set(risePairs)
                         if opRun > 0 { pairs.formUnion(blockPairs) }
-                        revert = circledList(pairs.sorted())
+                        newPending = circledList(pairs.sorted())
                     }
-                    text = revert + "ナミ"
+                    text = "ナミ"
                     opRun = 0
                     blockPairs.removeAll()
                     hadCenter = false
@@ -261,14 +263,16 @@ enum Notation {
                         blockPairs.formUnion(2...min(opRun, cap))  // 飛びで交換した対も戻しに含める
                     }
                 }
-                text = circledList(risePairs) + prefix + ayaName(slots)
+                newPending = circledList(risePairs)
+                text = prefix + ayaName(slots)
                 opRun += 1
                 if arrows?[r] == true { hadArrow = true }
                 if risesAtCenter { hadCenter = true }
                 for (i, s) in slots.enumerated() where s { blockPairs.insert(i + 2) }
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
-            texts.append(text)
+            texts.append(pending + text)
+            pending = newPending
             if !isBridge { prevSlots = slots }
             riseRun = risesAtCenter ? riseRun + 1 : 0
         }
