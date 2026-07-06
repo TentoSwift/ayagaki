@@ -207,8 +207,9 @@ enum Notation {
     }
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
-    /// ・⬆を伴う模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
-    /// ・⬆を伴わない模様の直後の空段 → 入れかわっていた目の糸番号だけ（例: 上1 → ②ナミ）
+    /// ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び・中央の連続⬆＝1段1対）を
+    ///   そのまま丸数字で戻す（例: 上1 → ②ナミ、飛び 2〜10 → ②〜⑩ナミ、中央⬆3段 → ①②③）
+    /// ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置（飛びの変化）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
     static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil,
@@ -216,14 +217,16 @@ enum Notation {
         var texts: [String] = []
         var opRun = 0          // 連続する入れかえ段数（中央で上がる段も含む）
         var prevSlots: [Bool]?
-        var blockPairs = Set<Int>()  // 模様の間に入れかわっていた目（スロット番号）
-        var blockHadRise = false     // 模様のブロックが⬆（中央で上ル）を伴うか
+        var blockPairs = Set<Int>()  // ブロック内で交換した対の番号（目＝スロットi→対i+2、飛びの数字）
+        var hadCenter = false        // ブロックが中央の色による上ルを含むか
+        var hadArrow = false         // ブロックが手取りの⬆を含むか
+        var riseRun = 0              // 直前まで連続した中央上ルの段数（1段＝1対の交換）
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
+            let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
-            let prevRise = r > 0 && centerRise?[r - 1] == true
-            // 中央の糸交換: 色を外した段（⬆の直後）にだけ「①」。置いた段の数字は表示しない
-            let centerPrefix = (!risesAtCenter && prevRise) ? circled(1) : ""
+            // 中央の糸交換: 連続 k 段の上ルが終わった段に ①〜ⓚ（1段＝1対）
+            let risePairs = (!risesAtCenter && riseRun > 0) ? Array(1...min(riseRun, cap)) : []
             var text: String
             var isBridge = false
             if !slots.contains(true) {
@@ -231,37 +234,43 @@ enum Notation {
                     // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
                     text = "ナミ"
                     isBridge = true
-                    blockHadRise = true
+                    hadCenter = true
                 } else {
-                    var revert = ""
-                    if opRun > 0 {
-                        if blockHadRise {
-                            // ⬆を伴うブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
-                            revert = circledRange(2, min(opRun + 2, row.count))
-                        } else {
-                            // ⬆なし: 入れかわっていた目の糸番号だけ戻す（スロットi＝糸i+2の対）
-                            revert = circledList(blockPairs.sorted().map { $0 + 2 })
-                        }
+                    var revert: String
+                    if opRun > 0 && hadArrow && !hadCenter {
+                        // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
+                        revert = circledRange(2, min(opRun + 2, cap))
+                    } else {
+                        // 交換した対をそのまま戻す（同数）。中央⬆の分と目の分は合算
+                        var pairs = Set(risePairs)
+                        if opRun > 0 { pairs.formUnion(blockPairs) }
+                        revert = circledList(pairs.sorted())
                     }
-                    text = centerPrefix + revert + "ナミ"
+                    text = revert + "ナミ"
                     opRun = 0
                     blockPairs.removeAll()
-                    blockHadRise = false
+                    hadCenter = false
+                    hadArrow = false
                 }
             } else {
                 var prefix = ""
                 if let prev = prevSlots, opRun >= 2 {
                     let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
-                    if added >= 2 { prefix = plainList(2, min(opRun, row.count)) }
+                    if added >= 2 {
+                        prefix = plainList(2, min(opRun, cap))
+                        blockPairs.formUnion(2...min(opRun, cap))  // 飛びで交換した対も戻しに含める
+                    }
                 }
-                text = centerPrefix + prefix + ayaName(slots)
+                text = circledList(risePairs) + prefix + ayaName(slots)
                 opRun += 1
-                if arrows?[r] == true || risesAtCenter { blockHadRise = true }
-                for (i, s) in slots.enumerated() where s { blockPairs.insert(i) }
+                if arrows?[r] == true { hadArrow = true }
+                if risesAtCenter { hadCenter = true }
+                for (i, s) in slots.enumerated() where s { blockPairs.insert(i + 2) }
             }
             if arrows?[r] == true { text += "⬆" }  // 中央で上ル
             texts.append(text)
             if !isBridge { prevSlots = slots }
+            riseRun = risesAtCenter ? riseRun + 1 : 0
         }
         return texts
     }

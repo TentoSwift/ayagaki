@@ -390,8 +390,9 @@ function repaintAll() {
 
 /* ===== 交換記号の生成（書籍 4-13 / 4-15 の形式） =====
    1段＝[糸交換リスト]＋[綾名]。綾の読みは「入れかえの目」＝1目おき（偶数目盛り、60玉=6目）のみ。
-   ・⬆を伴う模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
-   ・⬆を伴わない模様の直後の空段 → 入れかわっていた目の糸番号だけ（例: 上1 → ②ナミ）
+   ・戻しは「交換した糸と同数」: ブロック内で交換した対（目・飛び・中央の連続⬆＝1段1対）を
+     そのまま丸数字で戻す（例: 上1 → ②ナミ、飛び 2〜10 → ②〜⑩ナミ、中央⬆3段 → ①②③）
+   ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
    ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置
    ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
 function circled(n) {
@@ -457,14 +458,17 @@ function sideTexts(side) {
   const opp = side === "R" ? "L" : "R";
   let opRun = 0;
   let prev = null;
-  const blockPairs = new Set();  // 模様の間に入れかわっていた目（スロット番号）
-  let blockHadRise = false;      // 模様のブロックが⬆（中央で上ル）を伴うか
+  const blockPairs = new Set();  // ブロック内で交換した対の番号（目＝スロットi→対i+2、飛びの数字）
+  let hadCenter = false;         // ブロックが中央の色による上ルを含むか
+  let hadArrow = false;          // ブロックが手取りの⬆を含むか
+  let riseRun = 0;               // 直前まで連続した中央上ルの段数（1段＝1対の交換）
   for (let r = 0; r < app.rows; r++) {
     const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
-    const prevRise = r > 0 && (app.cells[opp][r - 1][0] || 0) > 0;
-    // 中央の糸交換: 色を外した段（⬆の直後）にだけ「①」。置いた段の数字は表示しない
-    const centerPrefix = (!risesAtCenter && prevRise) ? circled(1) : "";
+    // 中央の糸交換: 連続 k 段の上ルが終わった段に ①〜ⓚ（1段＝1対）
+    const risePairs = [];
+    if (!risesAtCenter && riseRun > 0)
+      for (let p = 1; p <= Math.min(riseRun, N); p++) risePairs.push(p);
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
     const cj = side === "R" ? 2 * r : 2 * r + 1;
     const hasArrow = (app.cells.C[cj] || 0) > 0;
@@ -475,37 +479,43 @@ function sideTexts(side) {
         // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
         text = "ナミ";
         isBridge = true;
-        blockHadRise = true;
+        hadCenter = true;
       } else {
-        let revert = "";
-        if (opRun > 0) {
-          if (blockHadRise) {
-            // ⬆を伴うブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
-            revert = circledRange(2, Math.min(opRun + 2, N));
-          } else {
-            // ⬆なし: 入れかわっていた目の糸番号だけ戻す（スロットi＝糸i+2の対）
-            revert = circledList([...blockPairs].sort((a, b) => a - b).map(i => i + 2));
-          }
+        let revert;
+        if (opRun > 0 && hadArrow && !hadCenter) {
+          // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
+          revert = circledRange(2, Math.min(opRun + 2, N));
+        } else {
+          // 交換した対をそのまま戻す（同数）。中央⬆の分と目の分は合算
+          const pairs = new Set(risePairs);
+          if (opRun > 0) blockPairs.forEach(p => pairs.add(p));
+          revert = circledList([...pairs].sort((a, b) => a - b));
         }
-        text = centerPrefix + revert + "ナミ";
+        text = revert + "ナミ";
         opRun = 0;
         blockPairs.clear();
-        blockHadRise = false;
+        hadCenter = false;
+        hadArrow = false;
       }
     } else {
       let prefix = "";
       if (prev && opRun >= 2) {
         const added = slots.filter((v, i) => v && !prev[i]).length;
-        if (added >= 2) prefix = plainList(2, Math.min(opRun, N));
+        if (added >= 2) {
+          prefix = plainList(2, Math.min(opRun, N));
+          for (let p = 2; p <= Math.min(opRun, N); p++) blockPairs.add(p);  // 飛びで交換した対も戻しに含める
+        }
       }
-      text = centerPrefix + prefix + ayaName(slots);
+      text = circledList(risePairs) + prefix + ayaName(slots);
       opRun++;
-      if (hasArrow || risesAtCenter) blockHadRise = true;
-      slots.forEach((v, i) => { if (v) blockPairs.add(i); });
+      if (hasArrow) hadArrow = true;
+      if (risesAtCenter) hadCenter = true;
+      slots.forEach((v, i) => { if (v) blockPairs.add(i + 2); });
     }
     if (hasArrow) text += "⬆";
     texts.push(text);
     if (!isBridge) prev = slots;
+    riseRun = risesAtCenter ? riseRun + 1 : 0;
   }
   return texts;
 }
