@@ -157,9 +157,12 @@ enum Notation {
         return "(\(n))"
     }
 
-    /// 綾の読みで使う「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目／68玉=7目）
+    /// 綾の読みで使う「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目／68玉=7目）。
+    /// すぐ外側の目（d+1）とペアで読み、どちらかに色があればその目は上がっているとみなす
     private static func sampledSlots(_ rowCells: [Int], dir: ReadDirection) -> [Bool] {
-        let sampled = stride(from: 1, to: rowCells.count, by: 2).map { rowCells[$0] > 0 }
+        let sampled = stride(from: 1, to: rowCells.count, by: 2).map { d in
+            rowCells[d] > 0 || (d + 1 < rowCells.count && rowCells[d + 1] > 0)
+        }
         return dir == .edge ? sampled.reversed() : Array(sampled)
     }
 

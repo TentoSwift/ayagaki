@@ -47,6 +47,9 @@ FIXTURES = {
   # 戻しの段の直後から次の模様が始まる場合は模様の記号の前に付く
   "戻しが次の模様と重なる": ([[],[1],[],[1,2],[1,2],[],[]], [], [],
     ["ナミ","上1","ナミ","②.上2","上2","ナミ","②③ナミ"]),
+  # 偶数列（入れかえの目のすぐ外側）の塗りも目として読む（負数＝生の d 指定）
+  "偶数列の塗りも目として読む": ([[],[-2,-4,-6,-8,-10,-12],[],[]], [], [],
+    ["ナミ","上6","ナミ","②〜⑦ナミ"]),
 }
 
 ID = mcp([("create_design", {"name":"記号回帰テスト","tama":60,"rows":10})])[0]["id"]
@@ -56,7 +59,7 @@ try:
         rows = len(slices)
         grid = [[0]*13 for _ in range(rows)]
         for r, slots in enumerate(slices):
-            for s in slots: grid[r][2*s-1] = 1
+            for s in slots: grid[r][-s if s < 0 else 2*s-1] = 1  # 負数＝生の d 指定
         gridR = [row[:] for row in grid]
         for r in centerRows: gridR[r][0] = 1  # 右の d=0 の色 → 左半面に中央上ル
         carr = [0]*(rows*2)  # C 配列: index 2r=右半面・2r+1=左半面

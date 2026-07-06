@@ -469,7 +469,8 @@ function sideTexts(side) {
   let hadArrow = false;          // ブロックが手取りの⬆を含むか
   const sched = Array.from({ length: app.rows }, () => new Set());  // 各段で戻す対（先の段に予約）
   for (let r = 0; r < app.rows; r++) {
-    const slots = idx.map(d => app.cells[side][r][d] > 0);
+    // 入れかえの目（d 奇数）とすぐ外側の目（d+1）をペアで読む。どちらかに色があれば上がっている
+    const slots = idx.map(d => app.cells[side][r][d] > 0 || (app.cells[side][r][d + 1] || 0) > 0);
     const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
     if (risesAtCenter) {
       // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
