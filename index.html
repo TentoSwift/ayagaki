@@ -523,7 +523,8 @@ function sideTexts(side) {
       // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
       if (r + 2 < app.rows) sched[r + 2].add(3);
     }
-    // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2。
+    // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、
+    // 戻しは色が終わった段の2段先に+2（交換の2段先より先になることがある）。
     // 番号は片面の目数（60玉=13、68玉=15）が上限。
     // 斜めに色が続く目（前段の±1目から移ってきた）は色が変わるところではないので交換しない
     const exchNums = new Set(tipNums[r]);  // 斜めの縞の一番先の糸交換（戻しなし）を含む
@@ -532,7 +533,9 @@ function sideTexts(side) {
         if (r > 0 && ((app.cells[side][r-1][d-1] || 0) > 0 ||
                       (d + 1 < N && (app.cells[side][r-1][d+1] || 0) > 0))) continue;
         exchNums.add(Math.min(d + 1, N));
-        if (r + 2 < app.rows) sched[r + 2].add(Math.min(d + 3, N));
+        let end = r;
+        while (end + 1 < app.rows && (app.cells[side][end+1][d] || 0) > 0) end++;
+        if (end + 2 < app.rows) sched[end + 2].add(Math.min(d + 3, N));
       }
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
