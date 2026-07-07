@@ -135,11 +135,11 @@ final class DesignStore: @unchecked Sendable {
             }
             var derivedC = cellsC
             if derivedC == nil {
-                // C 未指定なら中央の2列（d=0）の色から ⬆ を導出（左の色→右半面）
+                // C 未指定なら中央の2列（d=0）の色から ⬆ を導出（左の色→右半面。左半面は1段遅れ）
                 var c = [Int](repeating: 0, count: s.rows * 2)
                 for r in 0..<s.rows {
                     c[2 * r] = cellsL[r][0] > 0 ? 1 : 0
-                    c[2 * r + 1] = cellsR[r][0] > 0 ? 1 : 0
+                    c[2 * r + 1] = (r > 0 && cellsR[r - 1][0] > 0) ? 1 : 0
                 }
                 derivedC = c
             }

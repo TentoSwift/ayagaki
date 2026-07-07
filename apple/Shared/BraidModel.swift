@@ -109,7 +109,8 @@ struct CellGrid: Codable, Equatable {
     mutating func syncArrowFromCenterColor(side: BraidSide, row: Int) {
         guard side != .center else { return }
         let value = value(side: side, r: row, d: 0) > 0 ? 1 : 0
-        let j = side == .left ? 2 * row : 2 * row + 1  // 反対側の半面の ⬆
+        // 反対側の半面の ⬆。左半面は1段遅れて出る（右段が先に始まる配置に対応）
+        let j = side == .left ? 2 * row : 2 * (row + 1) + 1
         set(side: .center, r: j, d: 0, to: value)
     }
 }
@@ -348,8 +349,8 @@ enum Notation {
         let rows = cells.L.count
         let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
         let arrowsR = (0..<rows).map { cells.hasArrow(side: .right, row: $0) }
-        // 中央で上がる糸の色は反対側の中央列（d=0）に置かれる
-        let riseL = (0..<rows).map { cells.R[$0].first ?? 0 > 0 }
+        // 中央で上がる糸の色は反対側の中央列（d=0）に置かれる。左半面には1段遅れて効く
+        let riseL = (0..<rows).map { $0 > 0 && (cells.R[$0 - 1].first ?? 0) > 0 }
         let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
         let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL)
         let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR)
