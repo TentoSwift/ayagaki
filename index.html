@@ -492,6 +492,10 @@ function sideTexts(side) {
   const riseAt = side === "L"
     ? (r => r >= 0 && r + 1 < app.rows && (app.cells.R[r + 1][0] || 0) > 0)
     : (r => r >= 0 && r < app.rows && (app.cells.L[r][0] || 0) > 0);
+  // 反対の半面の中央上ル（矢印の後の戻し③は反対の面で行う）
+  const oppRiseAt = side === "L"
+    ? (r => r >= 0 && r < app.rows && (app.cells.L[r][0] || 0) > 0)
+    : (r => r >= 0 && r + 1 < app.rows && (app.cells.R[r + 1][0] || 0) > 0);
   for (let d = 1; d < N; d += 2) {
     // 内側（d-2、d=1 は中央の上ル）に色があるか
     const innerAt = r => r >= 0 && r < app.rows &&
@@ -521,9 +525,9 @@ function sideTexts(side) {
   for (let r = 0; r < app.rows; r++) {
     // 綾名は入れかえの目（d 奇数）だけを読む。偶数列（縦に進む列）は糸交換のみ
     const slots = idx.map(d => app.cells[side][r][d] > 0);
-    const risesAtCenter = riseAt(r);  // 中央の色による上ル（左半面は1段遅れ）
-    if (risesAtCenter) {
-      // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
+    const risesAtCenter = riseAt(r);  // 中央の色による上ル（左半面は1段前）
+    // 矢印（中央上ル）の後の戻し③は反対の面で行う: 反対側が上がった段の2段先に③
+    if (oppRiseAt(r)) {
       if (r + 2 < app.rows) sched[r + 2].add(3);
     }
     // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。

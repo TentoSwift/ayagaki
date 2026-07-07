@@ -231,7 +231,7 @@ enum Notation {
     /// ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
     static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil,
-                          centerRise: [Bool]? = nil) -> [String] {
+                          centerRise: [Bool]? = nil, oppositeRise: [Bool]? = nil) -> [String] {
         let rows = plane.count
         var texts: [String] = []
         var opRun = 0          // 連続する入れかえ段数（中央で上がる段も含む）
@@ -274,8 +274,8 @@ enum Notation {
             let slots = sampledSlots(row, dir: dir)
             let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
-            if risesAtCenter {
-                // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
+            // 矢印（中央上ル）の後の戻し③は反対の面で行う: 反対側が上がった段の2段先に③
+            if oppositeRise?[r] == true {
                 if r + 2 < rows { sched[r + 2].insert(3) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
@@ -352,8 +352,8 @@ enum Notation {
         // 中央で上がる糸の色は反対側の中央列（d=0）に置かれる。左半面には1段前に効く
         let riseL = (0..<rows).map { $0 + 1 < rows && (cells.R[$0 + 1].first ?? 0) > 0 }
         let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
-        let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL)
-        let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR)
+        let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL, oppositeRise: riseR)
+        let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR, oppositeRise: riseL)
         return (0..<lefts.count).map {
             NotationGroup(from: $0, to: $0, left: lefts[$0], right: rights[$0])
         }
