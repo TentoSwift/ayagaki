@@ -540,23 +540,25 @@ function sideTexts(side) {
     // 綾名は入れかえの目（d 奇数）だけを読む。偶数列（縦に進む列）は糸交換のみ
     const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = riseAt(r);  // 中央の色による上ル（左半面は1段前）
-    // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。終端を返す
+    // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。
+    // 終端の段と、色の数（ステップ数）を返す
     const trace45 = (r0, d0) => {
-      let pr = r0, pd = d0;
+      let pr = r0, pd = d0, n = 0;
       while (true) {
         if (pr + 1 < app.rows && pd + 1 < N && (app.cells[side][pr+1][pd+1] || 0) > 0) { pr++; pd++; }
         else if (pr + 2 < app.rows && pd + 2 < N && (app.cells[side][pr+2][pd+2] || 0) > 0) { pr += 2; pd += 2; }
         else break;
+        n++;
       }
-      return [pr, pd];
+      return [pr, pd, n];
     };
     // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
-    // 地色になる所の2段先に、その位置の番号（d+1。色が1つ増えるごとに+2）。最低は③
+    // 地色になる所の2段先に。番号は色が1つ増えるごとに+2（1+2×色数。最低は③）
     if (oppRiseAt(r)) {
       const src = (app.cells[side][r][0] || 0) > 0 ? r
         : (r + 1 < app.rows && (app.cells[side][r+1][0] || 0) > 0 ? r + 1 : r);
-      const [er, ed] = trace45(src, 0);
-      if (er + 2 < app.rows) sched[er + 2].add(Math.min(Math.max(3, ed + 1), N));
+      const [er, ed, steps] = trace45(src, 0);
+      if (er + 2 < app.rows) sched[er + 2].add(Math.min(Math.max(3, 1 + 2 * steps), N));
     }
     // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
     // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
@@ -571,8 +573,9 @@ function sideTexts(side) {
                       (d + 1 < N && (app.cells[side][r-1][d+1] || 0) > 0))) continue;
         if (r > 1 && (app.cells[side][r-2][d-2] || 0) > 0) continue;
         exchNums.add(Math.min(d + 1, N));
-        const [er, ed] = trace45(r, d);
-        if (er + 2 < app.rows) sched[er + 2].add(Math.min(ed + 3, N));
+        // 戻しの番号も色が1つ増えるごとに+2（基点 d+3）
+        const [er, ed, steps] = trace45(r, d);
+        if (er + 2 < app.rows) sched[er + 2].add(Math.min(d + 3 + 2 * steps, N));
       }
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
