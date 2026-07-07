@@ -33,8 +33,9 @@ struct PreviewCanvasView: View {
                 let r = rr % vm.rowCount
                 for side in [BraidSide.left, .right] {
                     for d in 0..<n {
+                        // 右段が先に始まる（グリッドと同じ配置。左半面が1目下がる）
                         let x = side == .right ? cx + CGFloat(d) * s : cx - (1 + CGFloat(d)) * s
-                        let y = y0 + CGFloat(rr) * 2 * s - CGFloat(d) * s + (side == .right ? s : 0)
+                        let y = y0 + CGFloat(rr) * 2 * s - CGFloat(d) * s + (side == .left ? s : 0)
                         var color = colors[min(max(vm.cells.value(side: side, r: r, d: d), 0), colors.count - 1)]
                         // 糸の向きによる艶の違いを簡易表現
                         if side == .left { color = color.shaded(by: -6) }

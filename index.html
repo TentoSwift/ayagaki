@@ -710,8 +710,9 @@ function renderPreview() {
     const r = rr % app.rows;
     for (const side of ["L", "R"]) {
       for (let d = 0; d < N; d++) {
+        // 右段が先に始まる（グリッドと同じ配置。左半面が1目下がる）
         const x = side === "R" ? cx + d * S : cx - (1 + d) * S;
-        const y = y0 + rr * 2 * S - d * S + (side === "R" ? S : 0);
+        const y = y0 + rr * 2 * S - d * S + (side === "L" ? S : 0);
         let color = app.palette[app.cells[side][r][d]] || app.palette[0];
         // 糸の向きによる艶の違いを簡易表現（左右で明度を少し変える）
         if (side === "L") color = shade(color, -6);
