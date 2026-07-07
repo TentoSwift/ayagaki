@@ -576,13 +576,8 @@ function renderNotation() {
   const rows = [];
   for (let r = 0; r < app.rows; r++) rows.push({ L: lefts[r], R: rights[r] });
 
-  // 連続する同一段をまとめる
-  const groups = [];
-  for (let r = 0; r < rows.length; r++) {
-    const last = groups[groups.length - 1];
-    if (last && last.L === rows[r].L && last.R === rows[r].R) last.to = r;
-    else groups.push({ from: r, to: r, L: rows[r].L, R: rows[r].R });
-  }
+  // 段は省略せず1段ずつ表示する
+  const groups = rows.map((row, r) => ({ from: r, to: r, L: row.L, R: row.R }));
 
   const tbl = document.createElement("table");
   tbl.className = "nota";

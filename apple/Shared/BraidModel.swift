@@ -323,7 +323,7 @@ enum Notation {
         return texts
     }
 
-    /// 全段を生成し、連続する同一手順の段をまとめる
+    /// 全段を生成する（段は省略せず1段ずつ）
     static func groups(cells: CellGrid, dir: ReadDirection) -> [NotationGroup] {
         let rows = cells.L.count
         let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
@@ -333,14 +333,8 @@ enum Notation {
         let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
         let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL)
         let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR)
-        var out: [NotationGroup] = []
-        for r in 0..<lefts.count {
-            if let last = out.last, last.left == lefts[r], last.right == rights[r] {
-                out[out.count - 1].to = r
-            } else {
-                out.append(NotationGroup(from: r, to: r, left: lefts[r], right: rights[r]))
-            }
+        return (0..<lefts.count).map {
+            NotationGroup(from: $0, to: $0, left: lefts[$0], right: rights[$0])
         }
-        return out
     }
 }
