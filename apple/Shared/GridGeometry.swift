@@ -13,7 +13,7 @@ struct GridGeometry {
     var y0: CGFloat { margin + CGFloat(cols) * cell }
 
     var size: CGSize {
-        // 右半面は1目ぶん下・内側にずれて左半面と連続タイルになる（隙間なし・書籍と同じ1段ずれ）
+        // 左半面は1目ぶん下・内側にずれて右半面と連続タイルになる（隙間なし・書籍と同じ1段ずれ。右段が先に始まる）
         CGSize(width: CGFloat(2 * cols + 1) * cell + 2 * (margin + numW),
                height: y0 + CGFloat(rows - 1) * 2 * cell + 2 * cell + margin)
     }
@@ -28,12 +28,12 @@ struct GridGeometry {
             return CGPoint(x: cx, y: y0 + CGFloat(r) * cell + cell / 2)
         }
         if side == .right {
-            // 右半面: d=0 が中央線上、左半面と1目（c）ずれて連続タイルになる
+            // 右半面: d=0 が中央線上。右段が先に始まり、左半面が1目（c）下がって連続タイルになる
             return CGPoint(x: cx + CGFloat(d) * cell,
-                           y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell + cell)
+                           y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell)
         }
         return CGPoint(x: cx - (1 + CGFloat(d)) * cell,
-                       y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell)
+                       y: y0 + CGFloat(r) * 2 * cell - CGFloat(d) * cell + cell)
     }
 
     /// 中央目のマス（45°に傾いた平行四辺形）の4頂点。偶数=右半面（／）、奇数=左半面（＼）。
@@ -74,7 +74,7 @@ struct GridGeometry {
             let dEst = side == .right ? Int((dxRaw / cell).rounded())
                                       : Int((dxRaw / cell).rounded()) - 1
             guard dEst >= -1, dEst <= cols else { continue }
-            let yOff: CGFloat = side == .right ? cell : 0
+            let yOff: CGFloat = side == .left ? cell : 0
             for d in (dEst - 1)...(dEst + 1) where d >= 0 && d < cols {
                 let rEst = Int(((p.y - y0 + CGFloat(d) * cell - yOff) / (2 * cell)).rounded())
                 for r in (rEst - 1)...(rEst + 1) where r >= 0 && r < rows {

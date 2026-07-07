@@ -237,9 +237,9 @@ function geo() {
 }
 
 function cellCenter(g, side, r, d) {
-  // 右半面は d=0 が中央線上・1目（CELL）下がって左半面と連続タイルになる
-  if (side === "R") return { x: g.cx + d * CELL, y: g.y0 + r * 2 * CELL - d * CELL + CELL };
-  return { x: g.cx - (1 + d) * CELL, y: g.y0 + r * 2 * CELL - d * CELL };
+  // 右半面は d=0 が中央線上。右段が先に始まり、左半面が1目（CELL）下がって連続タイルになる
+  if (side === "R") return { x: g.cx + d * CELL, y: g.y0 + r * 2 * CELL - d * CELL };
+  return { x: g.cx - (1 + d) * CELL, y: g.y0 + r * 2 * CELL - d * CELL + CELL };
 }
 
 function diamondPoints(x, y) {
