@@ -307,13 +307,16 @@ enum Notation {
             let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
             // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。
+            // 歩調は一貫させる: 1段1目で進んできた連なりは2段2目へ乗り換えない（逆も同じ）。
             // 終端の段と、色の数（ステップ数）を返す
             func trace45(fromRow r0: Int, col d0: Int) -> (row: Int, col: Int, steps: Int) {
-                var pr = r0, pd = d0, n = 0
+                var pr = r0, pd = d0, n = 0, pace = 0  // pace: 0=未定, 1, 2
                 while true {
-                    if pr + 1 < rows && pd + 1 < cap && plane[pr + 1][pd + 1] > 0 { pr += 1; pd += 1 }
-                    else if pr + 2 < rows && pd + 2 < cap && plane[pr + 2][pd + 2] > 0 { pr += 2; pd += 2 }
-                    else { break }
+                    if pace != 2, pr + 1 < rows, pd + 1 < cap, plane[pr + 1][pd + 1] > 0 {
+                        pr += 1; pd += 1; pace = 1
+                    } else if pace != 1, pr + 2 < rows, pd + 2 < cap, plane[pr + 2][pd + 2] > 0 {
+                        pr += 2; pd += 2; pace = 2
+                    } else { break }
                     n += 1
                 }
                 return (pr, pd, n)
