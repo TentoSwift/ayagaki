@@ -278,9 +278,11 @@ enum Notation {
                 if r + 2 < rows { sched[r + 2].insert(3) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、戻しは2段先に+2。
-            // 番号は片面の目数（60玉=13、68玉=15）が上限
+            // 番号は片面の目数（60玉=13、68玉=15）が上限。
+            // 斜めに色が続く目（前段の±1目から移ってきた）は色が変わるところではないので交換しない
             var exchNums = tipNums[r]  // 斜めの縞の一番先の糸交換（戻しなし）
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
+                if r > 0 && (plane[r-1][d-1] > 0 || (d + 1 < row.count && plane[r-1][d+1] > 0)) { continue }
                 exchNums.insert(min(d + 1, cap))
                 if r + 2 < rows { sched[r + 2].insert(min(d + 3, cap)) }
             }
@@ -309,7 +311,13 @@ enum Notation {
                 }
             } else {
                 if let prev = prevSlots, opRun >= 2 {
-                    let added = zip(slots, prev).filter { $0.0 && !$0.1 }.count
+                    // 斜めに色が続く（前段の±1目から移ってきた）目は交換に数えない。
+                    // 色が変わるところ（斜めから繋がらない新しい目）だけ糸交換
+                    let added = slots.indices.filter { i in
+                        slots[i] && !prev[i]
+                            && !(i > 0 && prev[i - 1])
+                            && !(i + 1 < prev.count && prev[i + 1])
+                    }.count
                     if added >= 2 {
                         exchNums.formUnion(2...min(opRun, cap))
                         // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④。片面の目数が上限）
