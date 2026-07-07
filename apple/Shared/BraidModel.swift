@@ -301,11 +301,11 @@ enum Notation {
                 return (pr, pd, n)
             }
             // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
-            // 地色になる所の2段先に。番号は色が1つ増えるごとに+2（1+2×色数。最低は③）
+            // 地色になる所の2段先に。番号は中央単独=③を基点に、色が1つ増えるごとに+2（3+2×色数）
             if oppositeRise?[r] == true {
                 let src = plane[r][0] > 0 ? r : (r + 1 < rows && plane[r + 1][0] > 0 ? r + 1 : r)
                 let end = trace45(fromRow: src, col: 0)
-                if end.row + 2 < rows { sched[end.row + 2].insert(min(max(3, 1 + 2 * end.steps), cap)) }
+                if end.row + 2 < rows { sched[end.row + 2].insert(min(3 + 2 * end.steps, cap)) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
             // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
