@@ -517,7 +517,21 @@ function sideTexts(side) {
         }
         // 内側が縞の始まる前から終端まで塗られたままなら、広がる模様（4-15型）なので出さない
         const widening = innerAt(a - 1) && innerAt(b);
-        if (fromInner && !toOuter && !widening) tipNums[b].add(Math.min(d + 1, N));
+        // 糸を変える操作（偶数列の糸交換）から45度で続いてきた色なら、
+        // 地色に戻る所までの間に糸交換を書かない（戻しが受け持つ）
+        let fromExchange = false;
+        let rr = a, dd = d;
+        while (true) {
+          if (rr - 1 >= 0 && dd - 1 >= 0 && app.cells[side][rr-1][dd-1] > 0) { rr--; dd--; }
+          else if (rr - 2 >= 0 && dd - 2 >= 0 && app.cells[side][rr-2][dd-2] > 0) { rr -= 2; dd -= 2; }
+          else break;
+          if (dd >= 2 && dd % 2 === 0) {
+            const diagPred = rr > 0 && (app.cells[side][rr-1][dd-1] > 0 ||
+                                        (dd + 1 < N && app.cells[side][rr-1][dd+1] > 0));
+            if (!diagPred) { fromExchange = true; break; }
+          }
+        }
+        if (fromInner && !toOuter && !widening && !fromExchange) tipNums[b].add(Math.min(d + 1, N));
         runStart = null;
       }
     }

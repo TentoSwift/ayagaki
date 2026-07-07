@@ -263,7 +263,21 @@ enum Notation {
                         (b...min(b + 2, rows - 1)).contains { plane[$0][d+2] > 0 }
                     // 内側が縞の始まる前から終端まで塗られたままなら、広がる模様（4-15型）なので出さない
                     let widening = innerAt(a - 1) && innerAt(b)
-                    if fromInner && !toOuter && !widening {
+                    // 糸を変える操作（偶数列の糸交換）から45度で続いてきた色なら、
+                    // 地色に戻る所までの間に糸交換を書かない（戻しが受け持つ）
+                    var fromExchange = false
+                    var rr = a, dd = d
+                    while true {
+                        if rr - 1 >= 0 && dd - 1 >= 0 && plane[rr-1][dd-1] > 0 { rr -= 1; dd -= 1 }
+                        else if rr - 2 >= 0 && dd - 2 >= 0 && plane[rr-2][dd-2] > 0 { rr -= 2; dd -= 2 }
+                        else { break }
+                        if dd >= 2 && dd % 2 == 0 {
+                            let diagPred = rr > 0 && (plane[rr-1][dd-1] > 0 ||
+                                                      (dd + 1 < cols && plane[rr-1][dd+1] > 0))
+                            if !diagPred { fromExchange = true; break }
+                        }
+                    }
+                    if fromInner && !toOuter && !widening && !fromExchange {
                         tipNums[b].insert(min(d + 1, cols))
                     }
                     runStart = nil
