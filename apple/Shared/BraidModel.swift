@@ -303,10 +303,11 @@ enum Notation {
                 return (pr, pd, n)
             }
             // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
-            // 地色になる所の2段先に。番号は終端の位置の番号+2（end.d+3。中央単独=③、d2で終われば⑤）
+            // 地色になる所の2段先に。番号は終端の位置の番号+2（end.d+3。中央単独=③、d2で終われば⑤）。
+            // 一番端（最外の目）まで達した場合は戻し不要
             if oppositeRise?[r] == true {
                 let end = trace45(fromRow: r, col: 0)
-                if end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
+                if end.col < cap - 1, end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
             // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
@@ -319,9 +320,9 @@ enum Notation {
                 if r > 0 && (plane[r-1][d-1] > 0 || (d + 1 < row.count && plane[r-1][d+1] > 0)) { continue }
                 if r > 1 && plane[r-2][d-2] > 0 { continue }
                 exchNums.insert(min(d + 1, cap))
-                // 戻しの番号は終端の位置の番号+2（end.d+3）
+                // 戻しの番号は終端の位置の番号+2（end.d+3）。一番端まで達した場合は戻し不要
                 let end = trace45(fromRow: r, col: d)
-                if end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
+                if end.col < cap - 1, end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
             }
             var aya: String
             var isBridge = false
