@@ -308,9 +308,9 @@ function pushUndo() {
 }
 
 function syncArrowFromCenterColor(side, r) {
-  // 左の中央列の色 → 右半面の ⬆（C[2r]）、右 → 左半面（1段遅れて C[2(r+1)+1]）
-  const j = side === "L" ? 2 * r : 2 * (r + 1) + 1;
-  if (j < app.cells.C.length) app.cells.C[j] = (app.cells[side][r][0] || 0) > 0 ? 1 : 0;
+  // 左の中央列の色 → 右半面の ⬆（C[2r]）、右 → 左半面（1段前の C[2(r-1)+1]）
+  const j = side === "L" ? 2 * r : 2 * (r - 1) + 1;
+  if (j >= 0 && j < app.cells.C.length) app.cells.C[j] = (app.cells[side][r][0] || 0) > 0 ? 1 : 0;
 }
 function paintCell(side, r, d) {
   const v = app.cur;
@@ -488,9 +488,9 @@ function sideTexts(side) {
   // 斜めに進んだ縞（入れかえの目を1目ずつ外へ移る色）の糸交換:
   // 一番先の目の色が終わる段に、その場所の番号（d+1）を書く。戻しは不要
   const tipNums = Array.from({ length: app.rows }, () => new Set());
-  // 中央上ル: 反対側の d=0 の色。左半面には1段遅れて効く
+  // 中央上ル: 反対側の d=0 の色。左半面には1段前に効く
   const riseAt = side === "L"
-    ? (r => r >= 1 && r <= app.rows && (app.cells.R[r - 1][0] || 0) > 0)
+    ? (r => r >= 0 && r + 1 < app.rows && (app.cells.R[r + 1][0] || 0) > 0)
     : (r => r >= 0 && r < app.rows && (app.cells.L[r][0] || 0) > 0);
   for (let d = 1; d < N; d += 2) {
     // 内側（d-2、d=1 は中央の上ル）に色があるか
