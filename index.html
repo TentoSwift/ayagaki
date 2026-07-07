@@ -540,24 +540,39 @@ function sideTexts(side) {
     // 綾名は入れかえの目（d 奇数）だけを読む。偶数列（縦に進む列）は糸交換のみ
     const slots = idx.map(d => app.cells[side][r][d] > 0);
     const risesAtCenter = riseAt(r);  // 中央の色による上ル（左半面は1段前）
-    // 矢印（中央上ル）の後の戻し③は反対の面で行う: 反対側が上がった段の2段先に③
+    // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。終端を返す
+    const trace45 = (r0, d0) => {
+      let pr = r0, pd = d0;
+      while (true) {
+        if (pr + 1 < app.rows && pd + 1 < N && (app.cells[side][pr+1][pd+1] || 0) > 0) { pr++; pd++; }
+        else if (pr + 2 < app.rows && pd + 2 < N && (app.cells[side][pr+2][pd+2] || 0) > 0) { pr += 2; pd += 2; }
+        else break;
+      }
+      return [pr, pd];
+    };
+    // 矢印（中央上ル）の後の戻し③は反対の面で行う。中央の色から45度に進んだ色が
+    // 地色になる所の2段先に③（色が続く間は戻さない）
     if (oppRiseAt(r)) {
-      if (r + 2 < app.rows) sched[r + 2].add(3);
+      const src = (app.cells[side][r][0] || 0) > 0 ? r
+        : (r + 1 < app.rows && (app.cells[side][r+1][0] || 0) > 0 ? r + 1 : r);
+      const [er] = trace45(src, 0);
+      if (er + 2 < app.rows) sched[er + 2].add(3);
     }
     // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
     // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
     // （最後に色が続いた位置の2段先・番号+3。交換の2段先より先になることがある）。
     // 番号は片面の目数（60玉=13、68玉=15）が上限。
-    // 斜めに色が続く目（前段の±1目から移ってきた）は色が変わるところではないので交換しない
+    // 45度で続いてきた色（前段の±1目、または1段おきなら2段前の2目内側。中央含む）は
+    // 色が変わるところではないので交換しない
     const exchNums = new Set(tipNums[r]);  // 斜めの縞の一番先の糸交換（戻しなし）を含む
     for (let d = 2; d < N; d += 2) {
       if ((app.cells[side][r][d] || 0) > 0) {
         if (r > 0 && ((app.cells[side][r-1][d-1] || 0) > 0 ||
                       (d + 1 < N && (app.cells[side][r-1][d+1] || 0) > 0))) continue;
+        if (r > 1 && (app.cells[side][r-2][d-2] || 0) > 0) continue;
         exchNums.add(Math.min(d + 1, N));
-        let m = 0;
-        while (r + m + 1 < app.rows && d + m + 1 < N && (app.cells[side][r+m+1][d+m+1] || 0) > 0) m++;
-        if (r + m + 2 < app.rows) sched[r + m + 2].add(Math.min(d + m + 3, N));
+        const [er, ed] = trace45(r, d);
+        if (er + 2 < app.rows) sched[er + 2].add(Math.min(ed + 3, N));
       }
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）

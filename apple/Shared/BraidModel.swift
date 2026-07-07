@@ -288,22 +288,36 @@ enum Notation {
             let slots = sampledSlots(row, dir: dir)
             let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
-            // 矢印（中央上ル）の後の戻し③は反対の面で行う: 反対側が上がった段の2段先に③
+            // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。終端の段を返す
+            func trace45(fromRow r0: Int, col d0: Int) -> (row: Int, col: Int) {
+                var pr = r0, pd = d0
+                while true {
+                    if pr + 1 < rows && pd + 1 < cap && plane[pr + 1][pd + 1] > 0 { pr += 1; pd += 1 }
+                    else if pr + 2 < rows && pd + 2 < cap && plane[pr + 2][pd + 2] > 0 { pr += 2; pd += 2 }
+                    else { break }
+                }
+                return (pr, pd)
+            }
+            // 矢印（中央上ル）の後の戻し③は反対の面で行う。中央の色から45度に進んだ色が
+            // 地色になる所の2段先に③（色が続く間は戻さない）
             if oppositeRise?[r] == true {
-                if r + 2 < rows { sched[r + 2].insert(3) }
+                let src = plane[r][0] > 0 ? r : (r + 1 < rows && plane[r + 1][0] > 0 ? r + 1 : r)
+                let end = trace45(fromRow: src, col: 0)
+                if end.row + 2 < rows { sched[end.row + 2].insert(3) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
             // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
             // （最後に色が続いた位置の2段先・番号+3。交換の2段先より先になることがある）。
             // 番号は片面の目数（60玉=13、68玉=15）が上限。
-            // 斜めに色が続く目（前段の±1目から移ってきた）は色が変わるところではないので交換しない
+            // 45度で続いてきた色（前段の±1目、または1段おきなら2段前の2目内側。中央含む）は
+            // 色が変わるところではないので交換しない
             var exchNums = tipNums[r]  // 斜めの縞の一番先の糸交換（戻しなし）
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
                 if r > 0 && (plane[r-1][d-1] > 0 || (d + 1 < row.count && plane[r-1][d+1] > 0)) { continue }
+                if r > 1 && plane[r-2][d-2] > 0 { continue }
                 exchNums.insert(min(d + 1, cap))
-                var m = 0
-                while r + m + 1 < rows && d + m + 1 < cap && plane[r + m + 1][d + m + 1] > 0 { m += 1 }
-                if r + m + 2 < rows { sched[r + m + 2].insert(min(d + m + 3, cap)) }
+                let end = trace45(fromRow: r, col: d)
+                if end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
             }
             var aya: String
             var isBridge = false
