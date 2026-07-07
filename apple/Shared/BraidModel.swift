@@ -241,6 +241,22 @@ enum Notation {
         var hadCenter = false        // ブロックが中央の色による上ルを含むか
         var hadArrow = false         // ブロックが手取りの⬆を含むか
         var sched = [Set<Int>](repeating: [], count: rows)  // 各段で戻す対（先の段に予約）
+        // 糸交換の連なりの追跡: 中央（d=0）または発火した偶数列の糸交換から45度
+        // （±1目、1段おきの2段2目も含む）で続いてきた色は carried。
+        // carried の偶数列は糸交換を書かない。綾（奇数列）から続いただけの偶数列は糸交換が要る
+        let cols0 = plane.first?.count ?? 0
+        var carried = [[Bool]](repeating: [Bool](repeating: false, count: cols0), count: rows)
+        var fired = [[Bool]](repeating: [Bool](repeating: false, count: cols0), count: rows)
+        for r0 in 0..<rows {
+            for d0 in 0..<cols0 where plane[r0][d0] > 0 {
+                func fromChain(_ rr: Int, _ dd: Int) -> Bool {
+                    guard rr >= 0, dd >= 0, dd < cols0, plane[rr][dd] > 0 else { return false }
+                    return carried[rr][dd] || dd == 0 || (dd % 2 == 0 && fired[rr][dd])
+                }
+                carried[r0][d0] = fromChain(r0-1, d0-1) || fromChain(r0-1, d0+1) || fromChain(r0-2, d0-2)
+                if d0 >= 2 && d0 % 2 == 0 && !carried[r0][d0] { fired[r0][d0] = true }
+            }
+        }
         // 斜めに進んだ縞（入れかえの目を1目ずつ外へ移る色）の糸交換:
         // 一番先の目の色が終わる段に、その場所の番号（d+1）を書く。戻しは不要
         var tipNums = [Set<Int>](repeating: [], count: rows)
@@ -317,8 +333,7 @@ enum Notation {
             // 色が変わるところではないので交換しない
             var exchNums = tipNums[r]  // 斜めの縞の一番先の糸交換（戻しなし）
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
-                if r > 0 && (plane[r-1][d-1] > 0 || (d + 1 < row.count && plane[r-1][d+1] > 0)) { continue }
-                if r > 1 && plane[r-2][d-2] > 0 { continue }
+                if !fired[r][d] { continue }  // 糸交換の連なりの続き（carried）は書かない
                 exchNums.insert(min(d + 1, cap))
                 // 戻しの番号は終端の位置の番号+2（end.d+3）。一番端まで達した場合は戻し不要
                 let end = trace45(fromRow: r, col: d)
