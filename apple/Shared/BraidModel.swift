@@ -269,20 +269,6 @@ enum Notation {
                 }
             }
         }
-        // 各偶数列の縦の色の終わり（戻しは色が続いている間はできず、色が終わった段の2段先になる）
-        var runEnds = [[Int]](repeating: [], count: rows)
-        for r in 0..<rows { runEnds[r] = [Int](repeating: 0, count: cols) }
-        for d in stride(from: 2, to: cols, by: 2) {
-            var r = 0
-            while r < rows {
-                if plane[r][d] > 0 {
-                    var b = r
-                    while b + 1 < rows && plane[b+1][d] > 0 { b += 1 }
-                    for rr in r...b { runEnds[rr][d] = b }
-                    r = b + 1
-                } else { r += 1 }
-            }
-        }
         for (r, row) in plane.enumerated() {
             let slots = sampledSlots(row, dir: dir)
             let cap = row.count
@@ -291,16 +277,18 @@ enum Notation {
                 // 中央の戻し: 交換した段の2段先に③（毎回同じ番号）
                 if r + 2 < rows { sched[r + 2].insert(3) }
             }
-            // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）、
-            // 戻しは色が終わった段の2段先に+2（交換の2段先より先になることがある）。
+            // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
+            // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
+            // （最後に色が続いた位置の2段先・番号+3。交換の2段先より先になることがある）。
             // 番号は片面の目数（60玉=13、68玉=15）が上限。
             // 斜めに色が続く目（前段の±1目から移ってきた）は色が変わるところではないので交換しない
             var exchNums = tipNums[r]  // 斜めの縞の一番先の糸交換（戻しなし）
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
                 if r > 0 && (plane[r-1][d-1] > 0 || (d + 1 < row.count && plane[r-1][d+1] > 0)) { continue }
                 exchNums.insert(min(d + 1, cap))
-                let end = runEnds[r][d]
-                if end + 2 < rows { sched[end + 2].insert(min(d + 3, cap)) }
+                var m = 0
+                while r + m + 1 < rows && d + m + 1 < cap && plane[r + m + 1][d + m + 1] > 0 { m += 1 }
+                if r + m + 2 < rows { sched[r + m + 2].insert(min(d + m + 3, cap)) }
             }
             var aya: String
             var isBridge = false
