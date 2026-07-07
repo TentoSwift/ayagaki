@@ -164,9 +164,7 @@ enum Notation {
         return dir == .edge ? sampled.reversed() : Array(sampled)
     }
 
-    /// 綾名（ナミ／上n下m…）。書籍 4-15 の書式:
-    /// ・中央から始まる単純な浮き（上n＋残り下）は「上n」と略記
-    /// ・それ以外は全区間を書き、3区間以上では 1 を省く（「下上下4」形式）
+    /// 綾名（ナミ／上a下b…）。全区間を数字付きで略さず書く（1も書く。合計は常に6）
     private static func ayaName(_ slots: [Bool]) -> String {
         guard slots.contains(true) else { return "ナミ" }
         var runs: [(flag: Bool, n: Int)] = []
@@ -177,14 +175,7 @@ enum Notation {
                 runs.append((f, 1))
             }
         }
-        if runs.first?.flag == true && runs.count <= 2 {
-            return "上\(runs[0].n)"
-        }
-        let omitOnes = runs.count >= 3
-        return runs.map { run in
-            let label = run.flag ? "上" : "下"
-            return (omitOnes && run.n == 1) ? label : label + "\(run.n)"
-        }.joined()
+        return runs.map { ($0.flag ? "上" : "下") + "\($0.n)" }.joined()
     }
 
     /// 丸数字の範囲（3個以下は並記、4個以上は ②〜⑩ 形式）
@@ -207,6 +198,24 @@ enum Notation {
         guard let first = nums.first, let last = nums.last else { return "" }
         if nums.count >= 6 && nums.count == last - first + 1 { return "\(first)〜\(last)." }
         return nums.map(String.init).joined(separator: ".") + "."
+    }
+
+    /// 糸交換（数字）と戻し（丸数字）を1つの数列にする（手書きの綾書の書式）。
+    /// 数値順に並べ、通常数字の後にだけ「.」。同種のみなら従来の範囲圧縮を使う
+    private static func numberList(circled circledNums: Set<Int>, plain plainNums: Set<Int>,
+                                   beforeNami: Bool) -> String {
+        if circledNums.isEmpty && plainNums.isEmpty { return "" }
+        if plainNums.isEmpty {
+            let s = circledList(circledNums.sorted())
+            return beforeNami ? s : s + "."
+        }
+        if circledNums.isEmpty { return plainNumbers(plainNums.sorted()) }
+        let all = (circledNums.map { ($0, true) } + plainNums.map { ($0, false) })
+            .sorted { $0.0 == $1.0 ? $0.1 && !$1.1 : $0.0 < $1.0 }
+        var out = ""
+        for (n, isCircled) in all { out += isCircled ? circled(n) : "\(n)." }
+        if !out.hasSuffix(".") && !beforeNami { out += "." }
+        return out
     }
 
     /// 片面の全段の記号（糸交換リスト＋綾名）。書籍 4-15 の実例に合わせた規則:
@@ -275,12 +284,12 @@ enum Notation {
                 exchNums.insert(min(d + 1, cap))
                 if r + 2 < rows { sched[r + 2].insert(min(d + 3, cap)) }
             }
-            var text: String
+            var aya: String
             var isBridge = false
             if !slots.contains(true) {
+                aya = "ナミ"
                 if risesAtCenter {
                     // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
-                    text = plainNumbers(exchNums.sorted()) + "ナミ"
                     isBridge = true
                     hadCenter = true
                 } else {
@@ -293,7 +302,6 @@ enum Notation {
                         pairs = opRun > 0 ? blockPairs : []
                     }
                     if r + 1 < rows { sched[r + 1].formUnion(pairs) }
-                    text = plainNumbers(exchNums.sorted()) + "ナミ"
                     opRun = 0
                     blockPairs.removeAll()
                     hadCenter = false
@@ -308,16 +316,16 @@ enum Notation {
                         blockPairs.formUnion((2...min(opRun, cap)).map { min($0 + 2, cap) })
                     }
                 }
-                text = plainNumbers(exchNums.sorted()) + ayaName(slots)
+                aya = ayaName(slots)
                 opRun += 1
                 if arrows?[r] == true { hadArrow = true }
                 if risesAtCenter { hadCenter = true }
             }
-            if arrows?[r] == true { text += "⬆" }  // 中央で上ル
-            // 丸数字と綾名の区切りはピリオド（書籍 4-16「②④.上6」。ナミの前は区切りなし）
-            var head = circledList(sched[r].sorted())
-            if !head.isEmpty && !text.hasPrefix("ナミ") { head += "." }
-            texts.append(head + text)
+            if arrows?[r] == true { aya += "⬆" }  // 中央で上ル
+            // 糸交換と戻しは1つの数列にまとめて前置（数値順。手書きの綾書の書式）
+            let nums = numberList(circled: sched[r], plain: exchNums,
+                                  beforeNami: aya.hasPrefix("ナミ"))
+            texts.append(nums + aya)
             if !isBridge { prevSlots = slots }
         }
         return texts

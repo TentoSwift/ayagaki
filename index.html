@@ -156,7 +156,7 @@
       </div>
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
-        記号の意味 — <b>綾名</b>：ナミ／上n（=上n下(6−n)の手取り）等／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
+        記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
         数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。記号表の左右の記号をタップすると ⬆（中央で上ル）を切り替えられます。
       </div>
     </div>
@@ -427,17 +427,33 @@ function plainNumbers(nums) {
   if (nums.length >= 6 && nums.length === last - first + 1) return `${first}〜${last}.`;
   return nums.join(".") + ".";
 }
+function numberList(circledNums, plainNums, beforeNami) {
+  // 糸交換（数字）と戻し（丸数字）を1つの数列にする（手書きの綾書の書式）。
+  // 数値順に並べ、通常数字の後にだけ「.」。同種のみなら従来の範囲圧縮を使う
+  const cs = [...circledNums].sort((a, b) => a - b);
+  const ps = [...plainNums].sort((a, b) => a - b);
+  if (!cs.length && !ps.length) return "";
+  if (!ps.length) {
+    const s = circledList(cs);
+    return beforeNami ? s : s + ".";
+  }
+  if (!cs.length) return plainNumbers(ps);
+  const all = [...cs.map(n => [n, true]), ...ps.map(n => [n, false])]
+    .sort((a, b) => a[0] === b[0] ? (b[1] ? 1 : 0) - (a[1] ? 1 : 0) : a[0] - b[0]);
+  let out = "";
+  for (const [n, isC] of all) out += isC ? circled(n) : n + ".";
+  if (!out.endsWith(".") && !beforeNami) out += ".";
+  return out;
+}
 function ayaName(slots) {
+  // 綾名は全区間を「上a下b…」で数字付きで略さず書く（1も書く。合計は常に6）
   if (!slots.some(Boolean)) return "ナミ";
   const runs = [];
   for (const f of slots) {
     if (runs.length && runs[runs.length - 1].f === f) runs[runs.length - 1].n++;
     else runs.push({ f, n: 1 });
   }
-  // 中央から始まる単純な浮きは「上n」と略記、それ以外は全区間（3区間以上は 1 を省略）
-  if (runs[0].f && runs.length <= 2) return `上${runs[0].n}`;
-  const omitOnes = runs.length >= 3;
-  return runs.map(x => (omitOnes && x.n === 1) ? (x.f ? "上" : "下") : (x.f ? "上" : "下") + x.n).join("");
+  return runs.map(x => (x.f ? "上" : "下") + x.n).join("");
 }
 /* 記号表のタップで ⬆（中央で上ル）をまとめて切り替える */
 function toggleArrows(from, to, side) {
@@ -519,12 +535,12 @@ function sideTexts(side) {
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
     const cj = side === "R" ? 2 * r : 2 * r + 1;
     const hasArrow = (app.cells.C[cj] || 0) > 0;
-    let text;
     let isBridge = false;
+    let aya;
     if (!slots.some(Boolean)) {
+      aya = "ナミ";
       if (risesAtCenter) {
         // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
-        text = plainNumbers([...exchNums].sort((a, b) => a - b)) + "ナミ";
         isBridge = true;
         hadCenter = true;
       } else {
@@ -537,7 +553,6 @@ function sideTexts(side) {
           pairs = [...blockPairs];
         }
         if (r + 1 < app.rows) pairs.forEach(p => sched[r + 1].add(p));
-        text = plainNumbers([...exchNums].sort((a, b) => a - b)) + "ナミ";
         opRun = 0;
         blockPairs.clear();
         hadCenter = false;
@@ -554,16 +569,14 @@ function sideTexts(side) {
           }
         }
       }
-      text = plainNumbers([...exchNums].sort((a, b) => a - b)) + ayaName(slots);
+      aya = ayaName(slots);
       opRun++;
       if (hasArrow) hadArrow = true;
       if (risesAtCenter) hadCenter = true;
     }
-    if (hasArrow) text += "⬆";
-    // 丸数字と綾名の区切りはピリオド（書籍 4-16「②④.上6」。ナミの前は区切りなし）
-    let head = circledList([...sched[r]].sort((a, b) => a - b));
-    if (head && !text.startsWith("ナミ")) head += ".";
-    texts.push(head + text);
+    if (hasArrow) aya += "⬆";
+    // 糸交換と戻しは1つの数列にまとめて前置（数値順。手書きの綾書の書式）
+    texts.push(numberList(sched[r], exchNums, aya.startsWith("ナミ")) + aya);
     if (!isBridge) prev = slots;
   }
   return texts;
