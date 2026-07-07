@@ -541,11 +541,7 @@ function sideTexts(side) {
           else if (rr - 2 >= 0 && dd - 2 >= 0 && app.cells[side][rr-2][dd-2] > 0) { rr -= 2; dd -= 2; }
           else break;
           if (dd === 0) { fromExchange = true; break; }  // 中央の糸交換が起点
-          if (dd % 2 === 0) {
-            const diagPred = rr > 0 && (app.cells[side][rr-1][dd-1] > 0 ||
-                                        (dd + 1 < N && app.cells[side][rr-1][dd+1] > 0));
-            if (!diagPred) { fromExchange = true; break; }
-          }
+          if (dd % 2 === 0 && fired[rr][dd]) { fromExchange = true; break; }  // 途中の糸交換が起点
         }
         if (fromInner && !toOuter && !widening && !fromExchange) tipNums[b].add(Math.min(d + 1, N));
         runStart = null;

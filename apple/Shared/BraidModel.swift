@@ -290,11 +290,7 @@ enum Notation {
                         else if rr - 2 >= 0 && dd - 2 >= 0 && plane[rr-2][dd-2] > 0 { rr -= 2; dd -= 2 }
                         else { break }
                         if dd == 0 { fromExchange = true; break }  // 中央の糸交換が起点
-                        if dd % 2 == 0 {
-                            let diagPred = rr > 0 && (plane[rr-1][dd-1] > 0 ||
-                                                      (dd + 1 < cols && plane[rr-1][dd+1] > 0))
-                            if !diagPred { fromExchange = true; break }
-                        }
+                        if dd % 2 == 0 && fired[rr][dd] { fromExchange = true; break }  // 途中の糸交換が起点
                     }
                     if fromInner && !toOuter && !widening && !fromExchange {
                         tipNums[b].insert(min(d + 1, cols))
