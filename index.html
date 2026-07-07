@@ -488,14 +488,12 @@ function sideTexts(side) {
   // 斜めに進んだ縞（入れかえの目を1目ずつ外へ移る色）の糸交換:
   // 一番先の目の色が終わる段に、その場所の番号（d+1）を書く。戻しは不要
   const tipNums = Array.from({ length: app.rows }, () => new Set());
-  // 中央上ル: 反対側の d=0 の色。左半面には1段前に効く
+  // 中央上ル: 反対側の d=0 の色。記号の法則は左右同一（⬆の表示位置だけ左が1段前 = C 側で対応）
   const riseAt = side === "L"
-    ? (r => r >= 0 && r + 1 < app.rows && (app.cells.R[r + 1][0] || 0) > 0)
+    ? (r => r >= 0 && r < app.rows && (app.cells.R[r][0] || 0) > 0)
     : (r => r >= 0 && r < app.rows && (app.cells.L[r][0] || 0) > 0);
-  // 反対の半面の中央上ル（矢印の後の戻し③は反対の面で行う）
-  const oppRiseAt = side === "L"
-    ? (r => r >= 0 && r < app.rows && (app.cells.L[r][0] || 0) > 0)
-    : (r => r >= 0 && r + 1 < app.rows && (app.cells.R[r + 1][0] || 0) > 0);
+  // 反対の半面の中央上ル（矢印の後の戻しは反対の面で行う）＝自面の d=0 の色
+  const oppRiseAt = r => r >= 0 && r < app.rows && (app.cells[side][r][0] || 0) > 0;
   for (let d = 1; d < N; d += 2) {
     // 内側（d-2、d=1 は中央の上ル）に色があるか
     const innerAt = r => r >= 0 && r < app.rows &&
@@ -555,9 +553,7 @@ function sideTexts(side) {
     // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
     // 地色になる所の2段先に。番号は中央単独=③を基点に、色が1つ増えるごとに+2（3+2×色数）
     if (oppRiseAt(r)) {
-      const src = (app.cells[side][r][0] || 0) > 0 ? r
-        : (r + 1 < app.rows && (app.cells[side][r+1][0] || 0) > 0 ? r + 1 : r);
-      const [er, ed, steps] = trace45(src, 0);
+      const [er, ed, steps] = trace45(r, 0);
       if (er + 2 < app.rows) sched[er + 2].add(Math.min(3 + 2 * steps, N));
     }
     // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。

@@ -303,8 +303,7 @@ enum Notation {
             // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
             // 地色になる所の2段先に。番号は中央単独=③を基点に、色が1つ増えるごとに+2（3+2×色数）
             if oppositeRise?[r] == true {
-                let src = plane[r][0] > 0 ? r : (r + 1 < rows && plane[r + 1][0] > 0 ? r + 1 : r)
-                let end = trace45(fromRow: src, col: 0)
+                let end = trace45(fromRow: r, col: 0)
                 if end.row + 2 < rows { sched[end.row + 2].insert(min(3 + 2 * end.steps, cap)) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
@@ -380,8 +379,9 @@ enum Notation {
         let rows = cells.L.count
         let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
         let arrowsR = (0..<rows).map { cells.hasArrow(side: .right, row: $0) }
-        // 中央で上がる糸の色は反対側の中央列（d=0）に置かれる。左半面には1段前に効く
-        let riseL = (0..<rows).map { $0 + 1 < rows && (cells.R[$0 + 1].first ?? 0) > 0 }
+        // 中央で上がる糸の色は反対側の中央列（d=0）に置かれる。
+        // 記号の法則は左右同一（⬆の表示位置だけ左が1段前 = C の自動書き込みで対応）
+        let riseL = (0..<rows).map { cells.R[$0].first ?? 0 > 0 }
         let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
         let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL, oppositeRise: riseR)
         let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR, oppositeRise: riseL)
