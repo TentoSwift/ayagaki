@@ -123,14 +123,15 @@ final class DesignStore: @unchecked Sendable {
                 guard plane.count == s.rows, plane.allSatisfy({ $0.count == cols }) else {
                     throw StoreError("cells.\(label) の次元が不正です。\(s.rows)行 × \(cols)列（片面）で指定してください")
                 }
-                guard plane.allSatisfy({ $0.allSatisfy { (0...3).contains($0) } }) else {
-                    throw StoreError("セル値は 0（地）〜 3（柄3）です")
+                // 地の色に対して柄色は1つ（値は 0=地、1=柄）
+                guard plane.allSatisfy({ $0.allSatisfy { (0...1).contains($0) } }) else {
+                    throw StoreError("セル値は 0（地）か 1（柄）です。柄色は1つしか使えません")
                 }
             }
             if let cellsC {
                 guard cellsC.count == s.rows * 2 || cellsC.count == s.rows,
-                      cellsC.allSatisfy({ (0...3).contains($0) }) else {
-                    throw StoreError("cells.C は \(s.rows * 2) 個（各段2目: index 2r=右の上ル目, 2r+1=左の上ル目）・値 0〜3 で指定してください")
+                      cellsC.allSatisfy({ (0...1).contains($0) }) else {
+                    throw StoreError("cells.C は \(s.rows * 2) 個（各段2目: index 2r=右の上ル目, 2r+1=左の上ル目）・値 0〜1 で指定してください")
                 }
             }
             var derivedC = cellsC
@@ -162,8 +163,8 @@ final class DesignStore: @unchecked Sendable {
                 guard let sideStr = op["side"] as? String, ["L", "R", "both", "C"].contains(sideStr) else {
                     throw StoreError("ops[\(i)].side は L / R / both / C（中央のジグザグ目）を指定してください")
                 }
-                guard let color = op["color"] as? Int, (0...3).contains(color) else {
-                    throw StoreError("ops[\(i)].color は 0（地）〜 3 を指定してください")
+                guard let color = op["color"] as? Int, (0...1).contains(color) else {
+                    throw StoreError("ops[\(i)].color は 0（地）か 1（柄）を指定してください。柄色は1つしか使えません")
                 }
                 let rowFrom = op["rowFrom"] as? Int ?? 1
                 let rowTo = op["rowTo"] as? Int ?? rowFrom

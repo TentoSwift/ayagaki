@@ -337,7 +337,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                                 "rowTo": ["type": "integer", "description": "終了段（省略時 rowFrom と同じ）"],
                                 "posFrom": ["type": "integer", "description": "開始目（1=中央、綾書定規の目盛りと同じ）"],
                                 "posTo": ["type": "integer", "description": "終了目（省略時 posFrom と同じ）"],
-                                "color": ["type": "integer", "description": "0=地（消去）、1〜3=柄色"],
+                                "color": ["type": "integer", "description": "0=地（消去）、1=柄（柄色は1つ）"],
                             ],
                             "required": ["side", "rowFrom", "posFrom", "color"],
                         ],
@@ -348,7 +348,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
         ],
         [
             "name": "set_cells",
-            "description": "グリッド全体を一括で置き換える。cells.L / cells.R は 段数 × 片面目数 の 2 次元配列（値 0〜3、index 0 が中央寄り・最後が外端）。細かい模様を一度に描くときに使う。",
+            "description": "グリッド全体を一括で置き換える。cells.L / cells.R は 段数 × 片面目数 の 2 次元配列（値 0=地・1=柄、index 0 が中央寄り・最後が外端。柄色は1つ）。細かい模様を一度に描くときに使う。",
             "inputSchema": [
                 "type": "object",
                 "properties": [

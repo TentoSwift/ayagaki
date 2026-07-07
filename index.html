@@ -188,7 +188,7 @@ let app = {
   tama: 60,
   rows: 40,
   palette: ["#dfe6c4", "#a2653a", "#3f5da8", "#c8b23c"],
-  paletteNames: ["地", "柄1", "柄2", "柄3"],
+  paletteNames: ["地", "柄", "柄2", "柄3"],  // 柄色は1つ（UI は先頭2色のみ表示）
   cur: 1,
   sym: false,
   readDir: "center",  // 綾書定規の目盛り（1=中央）に合わせ中央→端を既定に
@@ -362,8 +362,10 @@ gridSvg.addEventListener("pointercancel", stopPaint);
 /* ===== パレットUI ===== */
 const paletteDiv = document.getElementById("palette");
 function renderPalette() {
+  // 地の色に対して柄色は1つ（二枚安田組の制約）。配列は保存データ互換のため4色のまま
+  if (app.cur > 1) app.cur = 1;
   paletteDiv.innerHTML = "";
-  app.palette.forEach((color, i) => {
+  app.palette.slice(0, 2).forEach((color, i) => {
     const sw = document.createElement("div");
     sw.className = "swatch" + (app.cur === i ? " selected" : "");
     const inp = document.createElement("input");

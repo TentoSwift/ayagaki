@@ -31,7 +31,8 @@ enum BraidSpec {
     static let rowRange = 4...120
     static let defaultRows = 40
     static let defaultPalette = ["#DFE6C4", "#A2653A", "#3F5DA8", "#C8B23C"]
-    static let paletteLabels = ["地", "柄1", "柄2", "柄3"]
+    /// 地の色に対して柄色は1つ（UI は先頭2色のみ。配列は保存データ互換のため4色のまま）
+    static let paletteLabels = ["地", "柄", "柄2", "柄3"]
 
     /// MCP サーバなど外部からデザインが変更されたときの通知（object = NSManagedObjectID?）
     static let externalChangeNotification = Notification.Name("com.tento.ayagaki.externalChange")
