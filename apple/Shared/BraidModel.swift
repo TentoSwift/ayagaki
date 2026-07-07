@@ -253,7 +253,8 @@ enum Notation {
                     guard rr >= 0, dd >= 0, dd < cols0, plane[rr][dd] > 0 else { return false }
                     return carried[rr][dd] || dd == 0 || (dd % 2 == 0 && fired[rr][dd])
                 }
-                carried[r0][d0] = fromChain(r0-1, d0-1) || fromChain(r0-1, d0+1) || fromChain(r0-2, d0-2)
+                // 連なりは外向き（1目外 or 1段おきの2目外）のみ。内向きの斜めは続きにしない
+                carried[r0][d0] = fromChain(r0-1, d0-1) || fromChain(r0-2, d0-2)
                 if d0 >= 2 && d0 % 2 == 0 && !carried[r0][d0] { fired[r0][d0] = true }
             }
         }
