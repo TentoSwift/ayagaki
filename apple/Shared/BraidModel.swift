@@ -271,7 +271,8 @@ enum Notation {
                         if rr - 1 >= 0 && dd - 1 >= 0 && plane[rr-1][dd-1] > 0 { rr -= 1; dd -= 1 }
                         else if rr - 2 >= 0 && dd - 2 >= 0 && plane[rr-2][dd-2] > 0 { rr -= 2; dd -= 2 }
                         else { break }
-                        if dd >= 2 && dd % 2 == 0 {
+                        if dd == 0 { fromExchange = true; break }  // 中央の糸交換が起点
+                        if dd % 2 == 0 {
                             let diagPred = rr > 0 && (plane[rr-1][dd-1] > 0 ||
                                                       (dd + 1 < cols && plane[rr-1][dd+1] > 0))
                             if !diagPred { fromExchange = true; break }
@@ -301,10 +302,10 @@ enum Notation {
                 return (pr, pd, n)
             }
             // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
-            // 地色になる所の2段先に。番号は中央単独=③を基点に、色が1つ増えるごとに+2（3+2×色数）
+            // 地色になる所の2段先に。番号は終端の位置の番号+2（end.d+3。中央単独=③、d2で終われば⑤）
             if oppositeRise?[r] == true {
                 let end = trace45(fromRow: r, col: 0)
-                if end.row + 2 < rows { sched[end.row + 2].insert(min(3 + 2 * end.steps, cap)) }
+                if end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
             // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
@@ -317,9 +318,9 @@ enum Notation {
                 if r > 0 && (plane[r-1][d-1] > 0 || (d + 1 < row.count && plane[r-1][d+1] > 0)) { continue }
                 if r > 1 && plane[r-2][d-2] > 0 { continue }
                 exchNums.insert(min(d + 1, cap))
-                // 戻しの番号も色が1つ増えるごとに+2（基点 d+3）
+                // 戻しの番号は終端の位置の番号+2（end.d+3）
                 let end = trace45(fromRow: r, col: d)
-                if end.row + 2 < rows { sched[end.row + 2].insert(min(d + 3 + 2 * end.steps, cap)) }
+                if end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
             }
             var aya: String
             var isBridge = false
