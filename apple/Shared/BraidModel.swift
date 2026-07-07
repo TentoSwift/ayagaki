@@ -318,12 +318,17 @@ enum Notation {
                 }
                 return (pr, pd, n)
             }
-            // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
-            // 地色になる所の2段先に。番号は終端の位置の番号+2（end.d+3。中央単独=③、d2で終われば⑤）。
-            // 一番端（最外の目）まで達した場合は戻し不要
+            // 戻しは、45度の終端から先の「次の偶数列（交換できる目）」の段に、その位置の番号で行う:
+            // 終端が偶数列なら2段先に+3、奇数列なら1段先に+2。端を越える場合は戻し不要
+            func scheduleReturn(_ end: (row: Int, col: Int, steps: Int)) {
+                let step = end.col % 2 == 0 ? 2 : 1
+                let rCol = end.col + step
+                guard rCol <= cap - 1, end.row + step < rows else { return }
+                sched[end.row + step].insert(min(rCol + 1, cap))
+            }
+            // 矢印（中央上ル）の後の戻しは反対の面で行う（中央単独=③、d2で終われば⑤）
             if oppositeRise?[r] == true {
-                let end = trace45(fromRow: r, col: 0)
-                if end.col < cap - 1, end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
+                scheduleReturn(trace45(fromRow: r, col: 0))
             }
             // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
             // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
@@ -335,9 +340,7 @@ enum Notation {
             for d in stride(from: 2, to: row.count, by: 2) where row[d] > 0 {
                 if !fired[r][d] { continue }  // 糸交換の連なりの続き（carried）は書かない
                 exchNums.insert(min(d + 1, cap))
-                // 戻しの番号は終端の位置の番号+2（end.d+3）。一番端まで達した場合は戻し不要
-                let end = trace45(fromRow: r, col: d)
-                if end.col < cap - 1, end.row + 2 < rows { sched[end.row + 2].insert(min(end.col + 3, cap)) }
+                scheduleReturn(trace45(fromRow: r, col: d))
             }
             var aya: String
             var isBridge = false
