@@ -25,9 +25,13 @@ enum ReadDirection: String, Codable, CaseIterable, Identifiable {
 }
 
 enum BraidSpec {
-    /// 玉数 → 片面の目数（書籍 4-10/4-11 の綾書定規の目盛り: 60玉=1〜13、68玉=1〜15）
-    static func cols(forTama tama: Int) -> Int { tama == 68 ? 15 : 13 }
-    static let tamaOptions = [60, 68]
+    /// 玉数 → 片面の目数（書籍 4-10/4-11 の綾書定規の目盛り）。
+    /// 60玉=13目 を基点に 8玉ごとに +2目（68=15, 76=17, 84=19, 92=21, 100=23）
+    static func cols(forTama tama: Int) -> Int {
+        let t = tamaOptions.contains(tama) ? tama : 60
+        return 13 + (t - 60) / 4
+    }
+    static let tamaOptions = [60, 68, 76, 84, 92, 100]
     static let rowRange = 4...120
     static let defaultRows = 40
     static let defaultPalette = ["#DFE6C4", "#A2653A", "#3F5DA8", "#C8B23C"]
@@ -130,7 +134,7 @@ struct DesignSnapshot: Codable {
     /// 値を仕様範囲に正規化して返す
     func normalized() -> DesignSnapshot {
         var s = self
-        s.tama = tama == 68 ? 68 : 60
+        s.tama = BraidSpec.tamaOptions.contains(tama) ? tama : 60
         s.rows = min(BraidSpec.rowRange.upperBound, max(BraidSpec.rowRange.lowerBound, rows))
         if s.palette.count != 4 { s.palette = BraidSpec.defaultPalette }
         s.cells = cells.resized(rows: s.rows, cols: BraidSpec.cols(forTama: s.tama))
@@ -151,9 +155,13 @@ struct NotationGroup: Identifiable, Equatable {
 }
 
 enum Notation {
-    /// 丸数字（糸が元の段に戻った目数に付ける。書籍 4-13 の丸印）
+    /// 丸数字（糸が元の段に戻った目数に付ける。書籍 4-13 の丸印）。
+    /// ①〜⑳（U+2460）＋㉑〜㉟（U+3251）で 100玉（片面23目）まで対応
     private static func circled(_ n: Int) -> String {
         if (1...20).contains(n), let scalar = UnicodeScalar(0x2460 + n - 1) {
+            return String(Character(scalar))
+        }
+        if (21...35).contains(n), let scalar = UnicodeScalar(0x3251 + n - 21) {
             return String(Character(scalar))
         }
         return "(\(n))"

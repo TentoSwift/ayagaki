@@ -37,7 +37,7 @@ extension Design {
            decoded.count == 4 {
             palette = decoded
         }
-        return DesignSnapshot(name: name ?? "", tama: Int(tama) == 68 ? 68 : 60,
+        return DesignSnapshot(name: name ?? "", tama: Int(tama),
                               rows: rowCount, palette: palette, cells: cells, readDir: readDir)
             .normalized()
     }

@@ -106,7 +106,7 @@
 <body>
 <header>
   <h1>綾書エディタ</h1>
-  <span class="sub">二枚安田組（60玉 / 68玉）— 模様を塗ると交換記号を自動生成します</span>
+  <span class="sub">二枚安田組（60〜100玉）— 模様を塗ると交換記号を自動生成します</span>
 </header>
 
 <div class="layout">
@@ -123,6 +123,10 @@
           <select id="tamaSel">
             <option value="60">60玉（片面13目）</option>
             <option value="68">68玉（片面15目）</option>
+            <option value="76">76玉（片面17目）</option>
+            <option value="84">84玉（片面19目）</option>
+            <option value="92">92玉（片面21目）</option>
+            <option value="100">100玉（片面23目）</option>
           </select>
         </label>
         <label>段数 <input type="number" id="rowsInp" min="4" max="120" value="40"></label>
@@ -157,7 +161,7 @@
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
         記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
-        数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。記号表の左右の記号をタップすると ⬆（中央で上ル）を切り替えられます。
+        数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。記号表の左右の記号をタップすると ⬆（中央で上ル）を切り替えられます。
       </div>
     </div>
 
@@ -177,7 +181,8 @@
 "use strict";
 
 /* ===== 状態 ===== */
-const TAMA_TO_COLS = { 60: 13, 68: 15 };  // 綾書定規（書籍 4-10/4-11）の目盛りに合わせる
+// 綾書定規（書籍 4-10/4-11）の目盛り。60玉=13目 を基点に 8玉ごとに +2目
+const TAMA_TO_COLS = { 60: 13, 68: 15, 76: 17, 84: 19, 92: 21, 100: 23 };
 const CELL = 10;               // 菱形の半径（横=縦、45°）
 const MARGIN = 8;
 const NUM_W = 26;              // 段番号の帯幅
@@ -403,7 +408,10 @@ function repaintAll() {
    ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
    ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
 function circled(n) {
-  return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : `(${n})`;
+  // ①〜⑳（U+2460）＋㉑〜㉟（U+3251）で 100玉（片面23目）まで対応
+  if (n >= 1 && n <= 20) return String.fromCharCode(0x2460 + n - 1);
+  if (n >= 21 && n <= 35) return String.fromCharCode(0x3251 + n - 21);
+  return `(${n})`;
 }
 function circledRange(from, to) {
   if (to < from) return "";

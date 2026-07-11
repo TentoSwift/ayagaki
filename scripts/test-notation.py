@@ -139,4 +139,38 @@ try:
 finally:
     mcp([("delete_design", {"id":ID})])
 
+# --- 玉数の拡張（76/84/92/100玉。8玉ごとに片面+2目）。ユーザー確認 2026-07-11 ---
+TAMA_COLS = {60:13, 68:15, 76:17, 84:19, 92:21, 100:23}
+for tama, expected_cols in TAMA_COLS.items():
+    d = mcp([("create_design", {"name":f"玉数{tama}","tama":tama,"rows":6})])[0]
+    try:
+        if d.get("colsPerSide") != expected_cols:
+            print(f"✗ {tama}玉: colsPerSide={d.get('colsPerSide')!r} 期待={expected_cols}")
+            failed += 1
+        else:
+            print(f"✓ {tama}玉 → 片面{expected_cols}目")
+    finally:
+        mcp([("delete_design", {"id":d['id']})])
+
+# 100玉（片面23目）で丸数字が20を超える（㉓）ことを確認
+d = mcp([("create_design", {"name":"100玉丸数字","tama":100,"rows":6})])[0]
+try:
+    grid = [[0]*23 for _ in range(6)]
+    grid[1][20] = 1  # 偶数列 d=20 → 糸交換 21.、2段先に戻し ㉓
+    mcp([("set_cells", {"id":d['id'],"cells":{"L":grid,"R":[[0]*23 for _ in range(6)]}})])
+    n = mcp([("get_notation", {"id":d['id']})])[0]["notation"]
+    got = {}
+    for g in n:
+        span = g["rows"].split("〜")
+        for r in range(int(span[0]), int(span[-1])+1): got[r] = g["left"]
+    checks = [(2, "21.ナミ"), (4, "㉓ナミ")]
+    ok = all(got.get(r) == exp for r, exp in checks)
+    for r, exp in checks:
+        if got.get(r) != exp:
+            print(f"✗ 100玉丸数字 段{r}: 生成={got.get(r)!r} 期待={exp!r}")
+            failed += 1
+    print(f"{'✓' if ok else '✗'} 100玉で丸数字㉓（片面23目・戻し番号>20）")
+finally:
+    mcp([("delete_design", {"id":d['id']})])
+
 sys.exit(1 if failed else 0)

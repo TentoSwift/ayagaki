@@ -86,7 +86,7 @@ final class DesignStore: @unchecked Sendable {
             if let name { s.name = name }
             if let tama {
                 guard BraidSpec.tamaOptions.contains(tama) else {
-                    throw StoreError("tama は 60 か 68 を指定してください")
+                    throw StoreError("tama は \(BraidSpec.tamaOptions.map(String.init).joined(separator: " / ")) を指定してください")
                 }
                 s.tama = tama
             }
