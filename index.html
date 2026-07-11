@@ -577,11 +577,20 @@ function sideTexts(side) {
     // 地色になる所の2段先に。番号は終端の位置の番号+2（end.d+3。中央単独=③、d2で終われば⑤）
     // 戻しは、45度の終端から先の「次の偶数列（交換できる目）」の段に、その位置の番号で行う:
     // 終端が偶数列なら2段先に+3、奇数列なら1段先に+2。
-    // 一番端の列では糸交換ができない（端で折り返す）ため、着地が端の列以遠なら戻し不要
+    // 一番端の列でも糸戻しは行う。ただし着地する列の対が別の糸交換で使われている
+    // （着地の行範囲で発火した色がある）場合は戻せない。端を越える着地も無し
+    // （端の列の交換自体の戻しは端を越えるため書けない）。
     const scheduleReturn = (er, ed) => {
       const step = ed % 2 === 0 ? 2 : 1;
       const rCol = ed + step;
-      if (rCol < N - 1 && er + step < app.rows) sched[er + step].add(Math.min(rCol + 1, N));
+      if (rCol > N - 1 || er + step >= app.rows) return;
+      // 着地が一番端の列で、その端の対が着地の行範囲 [er, er+step] で糸交換を
+      // 発火しているなら、その対は別の交換で使用中のため戻せない（行範囲は配列境界でクランプ）
+      if (rCol === N - 1) {
+        const rLo = Math.max(0, er), rHi = Math.min(app.rows - 1, er + step);
+        for (let rr = rLo; rr <= rHi; rr++) if (fired[rr][rCol]) return;
+      }
+      sched[er + step].add(Math.min(rCol + 1, N));
     };
     // 矢印（中央上ル）の後の戻しは反対の面で行う（中央単独=③、d2で終われば⑤）
     if (oppRiseAt(r)) {
