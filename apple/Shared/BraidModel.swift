@@ -327,11 +327,12 @@ enum Notation {
                 return (pr, pd, n)
             }
             // 戻しは、45度の終端から先の「次の偶数列（交換できる目）」の段に、その位置の番号で行う:
-            // 終端が偶数列なら2段先に+3、奇数列なら1段先に+2。端を越える場合は戻し不要
+            // 終端が偶数列なら2段先に+3、奇数列なら1段先に+2。
+            // 一番端の列では糸交換ができない（端で折り返す）ため、着地が端の列以遠なら戻し不要
             func scheduleReturn(_ end: (row: Int, col: Int, steps: Int)) {
                 let step = end.col % 2 == 0 ? 2 : 1
                 let rCol = end.col + step
-                guard rCol <= cap - 1, end.row + step < rows else { return }
+                guard rCol < cap - 1, end.row + step < rows else { return }
                 sched[end.row + step].insert(min(rCol + 1, cap))
             }
             // 矢印（中央上ル）の後の戻しは反対の面で行う（中央単独=③、d2で終われば⑤）
