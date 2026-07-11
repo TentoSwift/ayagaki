@@ -86,7 +86,7 @@ final class DesignStore: @unchecked Sendable {
             if let name { s.name = name }
             if let tama {
                 guard BraidSpec.tamaOptions.contains(tama) else {
-                    throw StoreError("tama は 60 か 68 を指定してください")
+                    throw StoreError("tama は \(BraidSpec.tamaOptions.map(String.init).joined(separator: " / ")) を指定してください")
                 }
                 s.tama = tama
             }
@@ -123,23 +123,24 @@ final class DesignStore: @unchecked Sendable {
                 guard plane.count == s.rows, plane.allSatisfy({ $0.count == cols }) else {
                     throw StoreError("cells.\(label) の次元が不正です。\(s.rows)行 × \(cols)列（片面）で指定してください")
                 }
-                guard plane.allSatisfy({ $0.allSatisfy { (0...3).contains($0) } }) else {
-                    throw StoreError("セル値は 0（地）〜 3（柄3）です")
+                // 地の色に対して柄色は1つ（値は 0=地、1=柄）
+                guard plane.allSatisfy({ $0.allSatisfy { (0...1).contains($0) } }) else {
+                    throw StoreError("セル値は 0（地）か 1（柄）です。柄色は1つしか使えません")
                 }
             }
             if let cellsC {
                 guard cellsC.count == s.rows * 2 || cellsC.count == s.rows,
-                      cellsC.allSatisfy({ (0...3).contains($0) }) else {
-                    throw StoreError("cells.C は \(s.rows * 2) 個（各段2目: index 2r=右の上ル目, 2r+1=左の上ル目）・値 0〜3 で指定してください")
+                      cellsC.allSatisfy({ (0...1).contains($0) }) else {
+                    throw StoreError("cells.C は \(s.rows * 2) 個（各段2目: index 2r=右の上ル目, 2r+1=左の上ル目）・値 0〜1 で指定してください")
                 }
             }
             var derivedC = cellsC
             if derivedC == nil {
-                // C 未指定なら中央の2列（d=0）の色から ⬆ を導出（左の色→右半面）
+                // C 未指定なら中央の2列（d=0）の色から ⬆ を導出（左の色→右半面。左半面は1段前）
                 var c = [Int](repeating: 0, count: s.rows * 2)
                 for r in 0..<s.rows {
                     c[2 * r] = cellsL[r][0] > 0 ? 1 : 0
-                    c[2 * r + 1] = cellsR[r][0] > 0 ? 1 : 0
+                    c[2 * r + 1] = (r + 1 < s.rows && cellsR[r + 1][0] > 0) ? 1 : 0
                 }
                 derivedC = c
             }
@@ -162,8 +163,8 @@ final class DesignStore: @unchecked Sendable {
                 guard let sideStr = op["side"] as? String, ["L", "R", "both", "C"].contains(sideStr) else {
                     throw StoreError("ops[\(i)].side は L / R / both / C（中央のジグザグ目）を指定してください")
                 }
-                guard let color = op["color"] as? Int, (0...3).contains(color) else {
-                    throw StoreError("ops[\(i)].color は 0（地）〜 3 を指定してください")
+                guard let color = op["color"] as? Int, (0...1).contains(color) else {
+                    throw StoreError("ops[\(i)].color は 0（地）か 1（柄）を指定してください。柄色は1つしか使えません")
                 }
                 let rowFrom = op["rowFrom"] as? Int ?? 1
                 let rowTo = op["rowTo"] as? Int ?? rowFrom

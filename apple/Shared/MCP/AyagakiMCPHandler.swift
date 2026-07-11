@@ -119,11 +119,11 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "serverInfo": ["name": Self.serverName, "version": Self.serverVersion],
                 "instructions": """
                 組紐（二枚安田組）の綾書デザインを読み書きするサーバです。
-                グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（60玉=13目、68玉=15目）＋ 中央の上ル目 C（各段2目: index 2r=右半面、2r+1=左半面。塗るとその段の記号に ⬆=中央で上ル が付く）。
-                セル値: 0=地（ナミ）、1〜3=柄色。paint の pos は綾書定規の目盛りと同じで 1=中央 … colsPerSide=外端。
+                グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（8玉ごとに +2目。60玉=13目、68=15、76=17、84=19、92=21、100=23）＋ 中央の上ル目 C（各段2目: index 2r=右半面、2r+1=左半面。塗るとその段の記号に ⬆=中央で上ル が付く）。
+                セル値: 0=地（ナミ）、1=柄色（柄は1つ）。paint の pos は綾書定規の目盛りと同じで 1=中央 … colsPerSide=外端。
                 模様は両端の目（pos=colsPerSide）にかからないようにするのが定石。
                 同じ段のセルは実際の組紐では斜めのラインになります。模様の設計は paint（矩形塗り）か set_cells（全置換）で行い、
-                get_notation で組むときの交換記号を取得できます（上n=n目入れかえ・下n=n目そのまま・丸数字=元に戻る・ナミ=入れかえなし、末尾の下は省略）。綾の読みは入れかえの目＝1目おき（偶数目盛り、60玉=6目・68玉=7目）のみを数える。
+                get_notation で組むときの交換記号を取得できます（上n=n目入れかえ・下n=n目そのまま・丸数字=元に戻る・ナミ=入れかえなし、末尾の下は省略）。綾の読みは入れかえの目＝1目おき（偶数目盛り、片面目数の半分。60玉=6目・68=7・…・100=11）のみを数える。
                 export_pdf で手順書 PDF をファイルに書き出し、返されたパスから読み取れます。
                 """,
             ]
@@ -296,7 +296,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "type": "object",
                 "properties": [
                     "name": ["type": "string", "description": "デザイン名（必須）"],
-                    "tama": ["type": "integer", "description": "玉数: 60（片面13目）か 68（片面15目）。省略時 60"],
+                    "tama": ["type": "integer", "description": "玉数: 60/68/76/84/92/100（8玉ごとに片面+2目。60=13目, 68=15, 76=17, 84=19, 92=21, 100=23）。省略時 60"],
                     "rows": ["type": "integer", "description": "段数 4〜120。省略時 40"],
                 ],
                 "required": ["name"],
@@ -310,7 +310,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "properties": [
                     "id": ["type": "string", "description": "デザイン ID（必須）"],
                     "name": ["type": "string", "description": "新しい名前"],
-                    "tama": ["type": "integer", "description": "玉数: 60 か 68"],
+                    "tama": ["type": "integer", "description": "玉数: 60/68/76/84/92/100"],
                     "rows": ["type": "integer", "description": "段数 4〜120"],
                     "readDir": ["type": "string", "description": "交換記号の読み方向: edge（端→中央）か center（中央→端）"],
                     "palette": ["type": "array", "items": ["type": "string"],
@@ -337,7 +337,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                                 "rowTo": ["type": "integer", "description": "終了段（省略時 rowFrom と同じ）"],
                                 "posFrom": ["type": "integer", "description": "開始目（1=中央、綾書定規の目盛りと同じ）"],
                                 "posTo": ["type": "integer", "description": "終了目（省略時 posFrom と同じ）"],
-                                "color": ["type": "integer", "description": "0=地（消去）、1〜3=柄色"],
+                                "color": ["type": "integer", "description": "0=地（消去）、1=柄（柄色は1つ）"],
                             ],
                             "required": ["side", "rowFrom", "posFrom", "color"],
                         ],
@@ -348,7 +348,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
         ],
         [
             "name": "set_cells",
-            "description": "グリッド全体を一括で置き換える。cells.L / cells.R は 段数 × 片面目数 の 2 次元配列（値 0〜3、index 0 が中央寄り・最後が外端）。細かい模様を一度に描くときに使う。",
+            "description": "グリッド全体を一括で置き換える。cells.L / cells.R は 段数 × 片面目数 の 2 次元配列（値 0=地・1=柄、index 0 が中央寄り・最後が外端。柄色は1つ）。細かい模様を一度に描くときに使う。",
             "inputSchema": [
                 "type": "object",
                 "properties": [

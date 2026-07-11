@@ -106,7 +106,7 @@
 <body>
 <header>
   <h1>綾書エディタ</h1>
-  <span class="sub">二枚安田組（60玉 / 68玉）— 模様を塗ると交換記号を自動生成します</span>
+  <span class="sub">二枚安田組（60〜100玉）— 模様を塗ると交換記号を自動生成します</span>
 </header>
 
 <div class="layout">
@@ -123,6 +123,10 @@
           <select id="tamaSel">
             <option value="60">60玉（片面13目）</option>
             <option value="68">68玉（片面15目）</option>
+            <option value="76">76玉（片面17目）</option>
+            <option value="84">84玉（片面19目）</option>
+            <option value="92">92玉（片面21目）</option>
+            <option value="100">100玉（片面23目）</option>
           </select>
         </label>
         <label>段数 <input type="number" id="rowsInp" min="4" max="120" value="40"></label>
@@ -156,8 +160,8 @@
       </div>
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
-        記号の意味 — <b>綾名</b>：ナミ／上n（=上n下(6−n)の手取り）等／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
-        数えるのは入れかえの目（1目おき・60玉＝片面6目）のみ。記号表の左右の記号をタップすると ⬆（中央で上ル）を切り替えられます。
+        記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
+        数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。記号表の左右の記号をタップすると ⬆（中央で上ル）を切り替えられます。
       </div>
     </div>
 
@@ -177,7 +181,8 @@
 "use strict";
 
 /* ===== 状態 ===== */
-const TAMA_TO_COLS = { 60: 13, 68: 15 };  // 綾書定規（書籍 4-10/4-11）の目盛りに合わせる
+// 綾書定規（書籍 4-10/4-11）の目盛り。60玉=13目 を基点に 8玉ごとに +2目
+const TAMA_TO_COLS = { 60: 13, 68: 15, 76: 17, 84: 19, 92: 21, 100: 23 };
 const CELL = 10;               // 菱形の半径（横=縦、45°）
 const MARGIN = 8;
 const NUM_W = 26;              // 段番号の帯幅
@@ -188,7 +193,7 @@ let app = {
   tama: 60,
   rows: 40,
   palette: ["#dfe6c4", "#a2653a", "#3f5da8", "#c8b23c"],
-  paletteNames: ["地", "柄1", "柄2", "柄3"],
+  paletteNames: ["地", "柄", "柄2", "柄3"],  // 柄色は1つ（UI は先頭2色のみ表示）
   cur: 1,
   sym: false,
   readDir: "center",  // 綾書定規の目盛り（1=中央）に合わせ中央→端を既定に
@@ -237,9 +242,9 @@ function geo() {
 }
 
 function cellCenter(g, side, r, d) {
-  // 右半面は d=0 が中央線上・1目（CELL）下がって左半面と連続タイルになる
-  if (side === "R") return { x: g.cx + d * CELL, y: g.y0 + r * 2 * CELL - d * CELL + CELL };
-  return { x: g.cx - (1 + d) * CELL, y: g.y0 + r * 2 * CELL - d * CELL };
+  // 右半面は d=0 が中央線上。右段が先に始まり、左半面が1目（CELL）下がって連続タイルになる
+  if (side === "R") return { x: g.cx + d * CELL, y: g.y0 + r * 2 * CELL - d * CELL };
+  return { x: g.cx - (1 + d) * CELL, y: g.y0 + r * 2 * CELL - d * CELL + CELL };
 }
 
 function diamondPoints(x, y) {
@@ -308,9 +313,9 @@ function pushUndo() {
 }
 
 function syncArrowFromCenterColor(side, r) {
-  // 左の中央列の色 → 右半面の ⬆（C[2r]）、右 → 左半面（C[2r+1]）
-  const j = side === "L" ? 2 * r : 2 * r + 1;
-  app.cells.C[j] = (app.cells[side][r][0] || 0) > 0 ? 1 : 0;
+  // 左の中央列の色 → 右半面の ⬆（C[2r]）、右 → 左半面（1段前の C[2(r-1)+1]）
+  const j = side === "L" ? 2 * r : 2 * (r - 1) + 1;
+  if (j >= 0 && j < app.cells.C.length) app.cells.C[j] = (app.cells[side][r][0] || 0) > 0 ? 1 : 0;
 }
 function paintCell(side, r, d) {
   const v = app.cur;
@@ -362,8 +367,10 @@ gridSvg.addEventListener("pointercancel", stopPaint);
 /* ===== パレットUI ===== */
 const paletteDiv = document.getElementById("palette");
 function renderPalette() {
+  // 地の色に対して柄色は1つ（二枚安田組の制約）。配列は保存データ互換のため4色のまま
+  if (app.cur > 1) app.cur = 1;
   paletteDiv.innerHTML = "";
-  app.palette.forEach((color, i) => {
+  app.palette.slice(0, 2).forEach((color, i) => {
     const sw = document.createElement("div");
     sw.className = "swatch" + (app.cur === i ? " selected" : "");
     const inp = document.createElement("input");
@@ -390,11 +397,21 @@ function repaintAll() {
 
 /* ===== 交換記号の生成（書籍 4-13 / 4-15 の形式） =====
    1段＝[糸交換リスト]＋[綾名]。綾の読みは「入れかえの目」＝1目おき（偶数目盛り、60玉=6目）のみ。
-   ・模様が M 段続いた直後の空段 → 「②〜(M+2)ナミ」（入れかえていた糸を一括で戻す）
-   ・入れかえの目が一度に2目以上増える段 → 「2.3…M 」の糸交換を前置
+   ・上の操作（綾の手取りで目を上げる）には戻しを付けない。戻しが要るのは糸交換のみ
+   ・斜めに進んだ縞は、一番先の目の色が終わる段に、その場所の番号（d+1）で糸交換を書く（戻し不要）
+   ・飛びの糸交換は+2の番号で、模様の終わりの1段先で戻す（2.3 → ④⑤）
+   ・戻しの丸数字は終わった段の直後ではなく、ひとつ段を飛ばした先に表示する
+   ・中央の糸交換（⬆）は、それぞれの段の2段先に③で戻す（毎回同じ番号）
+   ・偶数列（縦に進む列 d=2,4,…）は糸交換のみ: 色のある段に番号 d+1 を書き、2段先に+2の丸数字で戻す
+   ・手取りの⬆のみ（中央の色なし）のブロックは書籍 4-15 の一括の戻し「②〜(M+2)ナミ」
+   ・入れかえの目が一度に2目以上増える段 → 「2.3.」等の糸交換を前置（6個以上は「2〜M.」に圧縮）
+   ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
    ・±1目の漸進変化は綾の手取りだけで賄うため数字なし */
 function circled(n) {
-  return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : `(${n})`;
+  // ①〜⑳（U+2460）＋㉑〜㉟（U+3251）で 100玉（片面23目）まで対応
+  if (n >= 1 && n <= 20) return String.fromCharCode(0x2460 + n - 1);
+  if (n >= 21 && n <= 35) return String.fromCharCode(0x3251 + n - 21);
+  return `(${n})`;
 }
 function circledRange(from, to) {
   if (to < from) return "";
@@ -405,23 +422,48 @@ function circledRange(from, to) {
   }
   return circled(from) + "〜" + circled(to);
 }
-function plainList(from, to) {
-  if (to < from) return "";
-  const parts = [];
-  for (let i = from; i <= to; i++) parts.push(i);
-  return parts.join(".") + " ";
+function circledList(nums) {
+  // 丸数字の列（昇順前提。連続なら範囲形式、不連続は並記）
+  if (!nums.length) return "";
+  const first = nums[0], last = nums[nums.length - 1];
+  if (nums.length === last - first + 1) return circledRange(first, last);
+  return nums.map(circled).join("");
+}
+function plainNumbers(nums) {
+  // 糸交換の番号列（昇順前提）。全体が連続で6個以上なら「2〜11.」に範囲圧縮（書籍 4-16）、
+  // それ以外は「3.5.7.」の並記。末尾のピリオドが綾名との区切り
+  if (!nums.length) return "";
+  const first = nums[0], last = nums[nums.length - 1];
+  if (nums.length >= 6 && nums.length === last - first + 1) return `${first}〜${last}.`;
+  return nums.join(".") + ".";
+}
+function numberList(circledNums, plainNums, beforeNami) {
+  // 糸交換（数字）と戻し（丸数字）を1つの数列にする（手書きの綾書の書式）。
+  // 数値順に並べ、通常数字の後にだけ「.」。同種のみなら従来の範囲圧縮を使う
+  const cs = [...circledNums].sort((a, b) => a - b);
+  const ps = [...plainNums].sort((a, b) => a - b);
+  if (!cs.length && !ps.length) return "";
+  if (!ps.length) {
+    const s = circledList(cs);
+    return beforeNami ? s : s + ".";
+  }
+  if (!cs.length) return plainNumbers(ps);
+  const all = [...cs.map(n => [n, true]), ...ps.map(n => [n, false])]
+    .sort((a, b) => a[0] === b[0] ? (b[1] ? 1 : 0) - (a[1] ? 1 : 0) : a[0] - b[0]);
+  let out = "";
+  for (const [n, isC] of all) out += isC ? circled(n) : n + ".";
+  if (!out.endsWith(".") && !beforeNami) out += ".";
+  return out;
 }
 function ayaName(slots) {
+  // 綾名は全区間を「上a下b…」で数字付きで略さず書く（1も書く。合計は常に6）
   if (!slots.some(Boolean)) return "ナミ";
   const runs = [];
   for (const f of slots) {
     if (runs.length && runs[runs.length - 1].f === f) runs[runs.length - 1].n++;
     else runs.push({ f, n: 1 });
   }
-  // 中央から始まる単純な浮きは「上n」と略記、それ以外は全区間（3区間以上は 1 を省略）
-  if (runs[0].f && runs.length <= 2) return `上${runs[0].n}`;
-  const omitOnes = runs.length >= 3;
-  return runs.map(x => (omitOnes && x.n === 1) ? (x.f ? "上" : "下") : (x.f ? "上" : "下") + x.n).join("");
+  return runs.map(x => (x.f ? "上" : "下") + x.n).join("");
 }
 /* 記号表のタップで ⬆（中央で上ル）をまとめて切り替える */
 function toggleArrows(from, to, side) {
@@ -449,40 +491,165 @@ function sideTexts(side) {
   const opp = side === "R" ? "L" : "R";
   let opRun = 0;
   let prev = null;
+  const blockPairs = new Set();  // ブロック内の飛びの糸交換で戻す番号（交換番号+2）
+  let hadCenter = false;         // ブロックが中央の色による上ルを含むか
+  let hadArrow = false;          // ブロックが手取りの⬆を含むか
+  const sched = Array.from({ length: app.rows }, () => new Set());  // 各段で戻す対（先の段に予約）
+  // 糸交換の連なりの追跡: 中央（d=0）または発火した偶数列の糸交換から45度
+  // （±1目、1段おきの2段2目も含む）で続いてきた色は carried。
+  // carried の偶数列は糸交換を書かない。綾（奇数列）から続いただけの偶数列は糸交換が要る
+  const carried = Array.from({ length: app.rows }, () => new Array(N).fill(false));
+  const fired = Array.from({ length: app.rows }, () => new Array(N).fill(false));
+  for (let r0 = 0; r0 < app.rows; r0++) {
+    for (let d0 = 0; d0 < N; d0++) {
+      if (!(app.cells[side][r0][d0] > 0)) continue;
+      const fromChain = (rr, dd) => rr >= 0 && dd >= 0 && dd < N && app.cells[side][rr][dd] > 0 &&
+        (carried[rr][dd] || dd === 0 || (dd % 2 === 0 && fired[rr][dd]));
+      // 連なりは外向き（1目外 or 1段おきの2目外）のみ。内向きの斜めは続きにしない
+      carried[r0][d0] = fromChain(r0-1, d0-1) || fromChain(r0-2, d0-2);
+      if (d0 >= 2 && d0 % 2 === 0 && !carried[r0][d0]) fired[r0][d0] = true;
+    }
+  }
+  // 斜めに進んだ縞（入れかえの目を1目ずつ外へ移る色）の糸交換:
+  // 一番先の目の色が終わる段に、その場所の番号（d+1）を書く。戻しは不要
+  const tipNums = Array.from({ length: app.rows }, () => new Set());
+  // 中央上ル: 反対側の d=0 の色。記号の法則は左右同一（⬆の表示位置だけ左が1段前 = C 側で対応）
+  const riseAt = side === "L"
+    ? (r => r >= 0 && r < app.rows && (app.cells.R[r][0] || 0) > 0)
+    : (r => r >= 0 && r < app.rows && (app.cells.L[r][0] || 0) > 0);
+  // 反対の半面の中央上ル（矢印の後の戻しは反対の面で行う）＝自面の d=0 の色
+  const oppRiseAt = r => r >= 0 && r < app.rows && (app.cells[side][r][0] || 0) > 0;
+  for (let d = 1; d < N; d += 2) {
+    // 内側（d-2、d=1 は中央の上ル）に色があるか
+    const innerAt = r => r >= 0 && r < app.rows &&
+      (d >= 3 ? app.cells[side][r][d - 2] > 0 : riseAt(r));
+    let runStart = null;
+    for (let r = 0; r <= app.rows; r++) {
+      const colored = r < app.rows && app.cells[side][r][d] > 0;
+      if (colored && runStart === null) runStart = r;
+      if (!colored && runStart !== null) {
+        const a = runStart, b = r - 1;
+        // 縞が内側から移ってきたか（直前の段か、1段おきの塗りなら2段前）
+        const fromInner = innerAt(a - 1) || innerAt(a - 2);
+        // 外側（d+2）へまだ続くか（1段おきの塗りも考慮して b+2 まで見る）
+        let toOuter = false;
+        if (d + 2 < N) {
+          for (let rr = b; rr <= Math.min(b + 2, app.rows - 1); rr++) {
+            if (app.cells[side][rr][d + 2] > 0) { toOuter = true; break; }
+          }
+        }
+        // 内側が縞の始まる前から終端まで塗られたままなら、広がる模様（4-15型）なので出さない
+        const widening = innerAt(a - 1) && innerAt(b);
+        // 糸を変える操作（偶数列の糸交換）から45度で続いてきた色なら、
+        // 地色に戻る所までの間に糸交換を書かない（戻しが受け持つ）
+        let fromExchange = false;
+        let rr = a, dd = d;
+        while (true) {
+          if (rr - 1 >= 0 && dd - 1 >= 0 && app.cells[side][rr-1][dd-1] > 0) { rr--; dd--; }
+          else if (rr - 2 >= 0 && dd - 2 >= 0 && app.cells[side][rr-2][dd-2] > 0) { rr -= 2; dd -= 2; }
+          else break;
+          if (dd === 0) { fromExchange = true; break; }  // 中央の糸交換が起点
+          if (dd % 2 === 0 && fired[rr][dd]) { fromExchange = true; break; }  // 途中の糸交換が起点
+        }
+        if (fromInner && !toOuter && !widening && !fromExchange) tipNums[b].add(Math.min(d + 1, N));
+        runStart = null;
+      }
+    }
+  }
   for (let r = 0; r < app.rows; r++) {
+    // 綾名は入れかえの目（d 奇数）だけを読む。偶数列（縦に進む列）は糸交換のみ
     const slots = idx.map(d => app.cells[side][r][d] > 0);
-    const risesAtCenter = (app.cells[opp][r][0] || 0) > 0;  // 中央の色による上ル
-    const prevRise = r > 0 && (app.cells[opp][r - 1][0] || 0) > 0;
-    // 中央の糸交換: 色を置いた段に「1」、外した段に「①」（位置1の糸の対）
-    let centerPrefix = "";
-    if (risesAtCenter && !prevRise) centerPrefix = "1 ";
-    if (!risesAtCenter && prevRise) centerPrefix = circled(1);
-    let text;
-    let isBridge = false;
-    if (!slots.some(Boolean)) {
-      if (risesAtCenter) {
-        // 中央だけで上がる段: 数えには中立（②〜n には入らない）
-        text = centerPrefix + "ナミ";
-        isBridge = true;
-      } else {
-        // 数字は片面の目数（60玉=13、68玉=15）が上限
-        text = opRun > 0 ? centerPrefix + circledRange(2, Math.min(opRun + 2, N)) + "ナミ"
-                         : centerPrefix + "ナミ";
-        opRun = 0;
+    const risesAtCenter = riseAt(r);  // 中央の色による上ル（左半面は1段前）
+    // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。
+    // 歩調は一貫させる: 1段1目で進んできた連なりは2段2目へ乗り換えない（逆も同じ）。
+    // 終端の段と、色の数（ステップ数）を返す
+    const trace45 = (r0, d0) => {
+      let pr = r0, pd = d0, n = 0, pace = 0;  // pace: 0=未定, 1, 2
+      while (true) {
+        if (pace !== 2 && pr + 1 < app.rows && pd + 1 < N && (app.cells[side][pr+1][pd+1] || 0) > 0) { pr++; pd++; pace = 1; }
+        else if (pace !== 1 && pr + 2 < app.rows && pd + 2 < N && (app.cells[side][pr+2][pd+2] || 0) > 0) { pr += 2; pd += 2; pace = 2; }
+        else break;
+        n++;
       }
-    } else {
-      let prefix = "";
-      if (prev && opRun >= 2) {
-        const added = slots.filter((v, i) => v && !prev[i]).length;
-        if (added >= 2) prefix = plainList(2, Math.min(opRun, N));
+      return [pr, pd, n];
+    };
+    // 矢印（中央上ル）の後の戻しは反対の面で行う。中央の色から45度に進んだ色が
+    // 地色になる所の2段先に。番号は終端の位置の番号+2（end.d+3。中央単独=③、d2で終われば⑤）
+    // 戻しは、45度の終端から先の「次の偶数列（交換できる目）」の段に、その位置の番号で行う:
+    // 終端が偶数列なら2段先に+3、奇数列なら1段先に+2。端を越える場合は戻し不要
+    const scheduleReturn = (er, ed) => {
+      const step = ed % 2 === 0 ? 2 : 1;
+      const rCol = ed + step;
+      if (rCol <= N - 1 && er + step < app.rows) sched[er + step].add(Math.min(rCol + 1, N));
+    };
+    // 矢印（中央上ル）の後の戻しは反対の面で行う（中央単独=③、d2で終われば⑤）
+    if (oppRiseAt(r)) {
+      const [er, ed] = trace45(r, 0);
+      scheduleReturn(er, ed);
+    }
+    // 偶数列（縦に進む列）は糸交換のみ: 番号は中央=1からの通し（d+1）。
+    // 交換した対は45度（1段ごとに1目外）で進み、色が地色になる所で元に戻す
+    // （最後に色が続いた位置の2段先・番号+3。交換の2段先より先になることがある）。
+    // 番号は片面の目数（60玉=13、68玉=15）が上限。
+    // 45度で続いてきた色（前段の±1目、または1段おきなら2段前の2目内側。中央含む）は
+    // 色が変わるところではないので交換しない
+    const exchNums = new Set(tipNums[r]);  // 斜めの縞の一番先の糸交換（戻しなし）を含む
+    for (let d = 2; d < N; d += 2) {
+      if ((app.cells[side][r][d] || 0) > 0) {
+        if (!fired[r][d]) continue;  // 糸交換の連なりの続き（carried）は書かない
+        exchNums.add(Math.min(d + 1, N));
+        const [er, ed] = trace45(r, d);
+        scheduleReturn(er, ed);
       }
-      text = centerPrefix + prefix + ayaName(slots);
-      opRun++;
     }
     // ⬆ は C が唯一の情報源（中央2列の塗りが自動で C を書き込み、タップで上書き可）
     const cj = side === "R" ? 2 * r : 2 * r + 1;
-    if ((app.cells.C[cj] || 0) > 0) text += "⬆";
-    texts.push(text);
+    const hasArrow = (app.cells.C[cj] || 0) > 0;
+    let isBridge = false;
+    let aya;
+    if (!slots.some(Boolean)) {
+      aya = "ナミ";
+      if (risesAtCenter) {
+        // 中央だけで上がる段: 数には入れず、続き扱い（書籍 4-15 のナミ⬆段は②〜nに入らない）
+        isBridge = true;
+        hadCenter = true;
+      } else {
+        let pairs = [];
+        if (opRun > 0 && hadArrow && !hadCenter) {
+          // 手取りの⬆のみのブロック: 書籍 4-15 の一括の戻し（数字は片面の目数が上限）
+          for (let p = 2; p <= Math.min(opRun + 2, N); p++) pairs.push(p);
+        } else if (opRun > 0) {
+          // 上の操作には戻し不要。飛びの糸交換の分だけ戻す
+          pairs = [...blockPairs];
+        }
+        if (r + 1 < app.rows) pairs.forEach(p => sched[r + 1].add(p));
+        opRun = 0;
+        blockPairs.clear();
+        hadCenter = false;
+        hadArrow = false;
+      }
+    } else {
+      if (prev && opRun >= 2) {
+        // 斜めに色が続く（前段の±1目から移ってきた）目は交換に数えない。
+        // 色が変わるところ（斜めから繋がらない新しい目）だけ糸交換
+        const added = slots.filter((v, i) =>
+          v && !prev[i] && !(i > 0 && prev[i - 1]) && !(i + 1 < prev.length && prev[i + 1])).length;
+        if (added >= 2) {
+          for (let p = 2; p <= Math.min(opRun, N); p++) {
+            exchNums.add(p);
+            // 飛びで交換した対は番号+2で戻す（糸交換の2 → ④。片面の目数が上限）
+            blockPairs.add(Math.min(p + 2, N));
+          }
+        }
+      }
+      aya = ayaName(slots);
+      opRun++;
+      if (hasArrow) hadArrow = true;
+      if (risesAtCenter) hadCenter = true;
+    }
+    if (hasArrow) aya += "⬆";
+    // 糸交換と戻しは1つの数列にまとめて前置（数値順。手書きの綾書の書式）
+    texts.push(numberList(sched[r], exchNums, aya.startsWith("ナミ")) + aya);
     if (!isBridge) prev = slots;
   }
   return texts;
@@ -495,13 +662,8 @@ function renderNotation() {
   const rows = [];
   for (let r = 0; r < app.rows; r++) rows.push({ L: lefts[r], R: rights[r] });
 
-  // 連続する同一段をまとめる
-  const groups = [];
-  for (let r = 0; r < rows.length; r++) {
-    const last = groups[groups.length - 1];
-    if (last && last.L === rows[r].L && last.R === rows[r].R) last.to = r;
-    else groups.push({ from: r, to: r, L: rows[r].L, R: rows[r].R });
-  }
+  // 段は省略せず1段ずつ表示する
+  const groups = rows.map((row, r) => ({ from: r, to: r, L: row.L, R: row.R }));
 
   const tbl = document.createElement("table");
   tbl.className = "nota";
@@ -560,8 +722,9 @@ function renderPreview() {
     const r = rr % app.rows;
     for (const side of ["L", "R"]) {
       for (let d = 0; d < N; d++) {
+        // 右段が先に始まる（グリッドと同じ配置。左半面が1目下がる）
         const x = side === "R" ? cx + d * S : cx - (1 + d) * S;
-        const y = y0 + rr * 2 * S - d * S + (side === "R" ? S : 0);
+        const y = y0 + rr * 2 * S - d * S + (side === "L" ? S : 0);
         let color = app.palette[app.cells[side][r][d]] || app.palette[0];
         // 糸の向きによる艶の違いを簡易表現（左右で明度を少し変える）
         if (side === "L") color = shade(color, -6);

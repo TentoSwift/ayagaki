@@ -148,8 +148,9 @@ struct EditorView: View {
     }
 
     private var paletteBar: some View {
+        // 地の色に対して柄色は1つ（二枚安田組の制約。ユーザー確認 2026-07-07）
         HStack(spacing: 8) {
-            ForEach(0..<4, id: \.self) { i in
+            ForEach(0..<2, id: \.self) { i in
                 Button {
                     vm.currentColor = i
                 } label: {
