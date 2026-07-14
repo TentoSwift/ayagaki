@@ -139,12 +139,6 @@
       <div class="row">
         <button id="undoBtn">↩︎ 元に戻す</button>
         <button id="clearBtn">全消去</button>
-        <label>記号の読み方向
-          <select id="dirSel">
-            <option value="center">中央 → 端</option>
-            <option value="edge">端 → 中央</option>
-          </select>
-        </label>
       </div>
       <div class="row fileRow">
         <input type="text" id="nameInp" placeholder="デザイン名" style="width: 140px">
@@ -196,7 +190,6 @@ let app = {
   paletteNames: ["地", "柄", "柄2", "柄3"],  // 柄色は1つ（UI は先頭2色のみ表示）
   cur: 1,
   sym: false,
-  readDir: "center",  // 綾書定規の目盛り（1=中央）に合わせ中央→端を既定に
   name: "",
   cells: null,   // { L: rows×N, R: rows×N }  値 = パレット番号（0=地）
 };
@@ -469,7 +462,6 @@ function sideTexts(side) {
   const N = cols();
   const idx = [];
   for (let d = 1; d < N; d += 2) idx.push(d);
-  if (app.readDir === "edge") idx.reverse();
 
   const texts = [];
   const opp = side === "R" ? "L" : "R";
@@ -746,14 +738,13 @@ function scheduleDerived() {
 function snapshot() {
   return {
     v: 1, name: app.name, tama: app.tama, rows: app.rows,
-    palette: app.palette, cells: app.cells, readDir: app.readDir,
+    palette: app.palette, cells: app.cells,
   };
 }
 function restore(s) {
   app.tama = TAMA_TO_COLS[s.tama] ? s.tama : 60;
   app.rows = Math.max(4, Math.min(120, s.rows || 40));
   app.palette = Array.isArray(s.palette) && s.palette.length === 4 ? s.palette : app.palette;
-  app.readDir = s.readDir === "edge" ? "edge" : "center";
   app.name = s.name || "";
   app.cells = resizeCells(s.cells, app.rows, cols());
   syncControls();
@@ -788,7 +779,6 @@ function syncControls() {
   document.getElementById("tamaSel").value = app.tama;
   document.getElementById("rowsInp").value = app.rows;
   document.getElementById("symChk").checked = app.sym;
-  document.getElementById("dirSel").value = app.readDir;
   document.getElementById("nameInp").value = app.name;
   renderPalette();
 }
@@ -816,9 +806,6 @@ document.getElementById("rowsInp").addEventListener("change", (e) => {
   fullRender(); scheduleAutosave();
 });
 document.getElementById("symChk").addEventListener("change", (e) => { app.sym = e.target.checked; });
-document.getElementById("dirSel").addEventListener("change", (e) => {
-  app.readDir = e.target.value; renderNotation(); scheduleAutosave();
-});
 document.getElementById("undoBtn").addEventListener("click", () => {
   const s = undoStack.pop();
   if (!s) return;

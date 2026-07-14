@@ -38,7 +38,7 @@ extension Design {
             palette = decoded
         }
         return DesignSnapshot(name: name ?? "", tama: Int(tama),
-                              rows: rowCount, palette: palette, cells: cells, readDir: readDir)
+                              rows: rowCount, palette: palette, cells: cells)
             .normalized()
     }
 
@@ -48,7 +48,6 @@ extension Design {
         name = s.name
         tama = Int16(s.tama)
         rows = Int16(s.rows)
-        readDir = s.readDir
         paletteJSON = (try? JSONEncoder().encode(s.palette)).flatMap { String(data: $0, encoding: .utf8) }
         cellsData = try? JSONEncoder().encode(s.cells)
         updatedAt = Date()

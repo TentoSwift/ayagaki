@@ -181,7 +181,6 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 name: arguments["name"] as? String,
                 tama: arguments["tama"] as? Int,
                 rows: arguments["rows"] as? Int,
-                readDir: arguments["readDir"] as? String,
                 palette: arguments["palette"] as? [String])
 
         case "paint":
@@ -312,7 +311,6 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                     "name": ["type": "string", "description": "新しい名前"],
                     "tama": ["type": "integer", "description": "玉数: 60/68/76/84/92/100"],
                     "rows": ["type": "integer", "description": "段数 4〜120"],
-                    "readDir": ["type": "string", "description": "交換記号の読み方向: edge（端→中央）か center（中央→端）"],
                     "palette": ["type": "array", "items": ["type": "string"],
                                 "description": "4 色の #RRGGBB 配列。[0]=地色、[1..3]=柄色"],
                 ],

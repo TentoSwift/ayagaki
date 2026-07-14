@@ -36,7 +36,6 @@ final class DesignStore: @unchecked Sendable {
             let s = design.snapshot
             var dict = summary(of: design)
             dict["palette"] = s.palette
-            dict["readDir"] = s.readDir ?? "center"
             dict["colsPerSide"] = BraidSpec.cols(forTama: s.tama)
             dict["cells"] = ["L": s.cells.L, "R": s.cells.R,
                              "C": s.cells.C ?? [Int](repeating: 0, count: s.rows * 2)]
@@ -71,15 +70,14 @@ final class DesignStore: @unchecked Sendable {
                 rows: rows ?? BraidSpec.defaultRows,
                 palette: BraidSpec.defaultPalette,
                 cells: .empty(rows: rows ?? BraidSpec.defaultRows,
-                              cols: BraidSpec.cols(forTama: tama ?? 60)),
-                readDir: ReadDirection.center.rawValue))
+                              cols: BraidSpec.cols(forTama: tama ?? 60))))
             try saveAndNotify(design)
             return summary(of: design)
         }
     }
 
     func update(id: String, name: String?, tama: Int?, rows: Int?,
-                readDir: String?, palette: [String]?) throws -> [String: Any] {
+                palette: [String]?) throws -> [String: Any] {
         try context.performAndWait {
             let design = try find(id)
             var s = design.snapshot
@@ -95,12 +93,6 @@ final class DesignStore: @unchecked Sendable {
                     throw StoreError("rows は \(BraidSpec.rowRange.lowerBound)〜\(BraidSpec.rowRange.upperBound) で指定してください")
                 }
                 s.rows = rows
-            }
-            if let readDir {
-                guard ReadDirection(rawValue: readDir) != nil else {
-                    throw StoreError("readDir は edge か center を指定してください")
-                }
-                s.readDir = readDir
             }
             if let palette {
                 guard palette.count == 4 else { throw StoreError("palette は 4 色（#RRGGBB）の配列です") }
@@ -253,8 +245,7 @@ final class DesignStore: @unchecked Sendable {
     }
 
     private func notationRows(_ s: DesignSnapshot) -> [[String: Any]] {
-        let dir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
-        return Notation.groups(cells: s.cells, dir: dir).map {
+        return Notation.groups(cells: s.cells).map {
             ["rows": $0.label, "left": $0.left, "right": $0.right]
         }
     }

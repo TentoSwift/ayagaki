@@ -77,8 +77,7 @@ struct ContentView: View {
         design.apply(snapshot: DesignSnapshot(
             name: "", tama: 60, rows: BraidSpec.defaultRows,
             palette: BraidSpec.defaultPalette,
-            cells: .empty(rows: BraidSpec.defaultRows, cols: BraidSpec.cols(forTama: 60)),
-            readDir: ReadDirection.center.rawValue))
+            cells: .empty(rows: BraidSpec.defaultRows, cols: BraidSpec.cols(forTama: 60))))
         try? context.save()
         selection = design.objectID
     }

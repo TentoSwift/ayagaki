@@ -330,13 +330,6 @@ private struct SettingsForm: View {
                         value: Binding(get: { vm.rowCount }, set: { vm.setRows($0) }),
                         in: BraidSpec.rowRange)
             }
-            Section("交換記号") {
-                Picker("読み方向", selection: Binding(get: { vm.readDir }, set: { vm.setReadDir($0) })) {
-                    ForEach(ReadDirection.allCases) { d in
-                        Text(d.label).tag(d)
-                    }
-                }
-            }
             Section {
                 Button("全消去", role: .destructive) {
                     dismiss()

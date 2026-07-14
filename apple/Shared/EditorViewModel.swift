@@ -10,7 +10,6 @@ final class EditorViewModel: ObservableObject {
     @Published var rowCount: Int
     @Published var cells: CellGrid
     @Published var palette: [String]
-    @Published var readDir: ReadDirection
     @Published var currentColor: Int = 1
     @Published var symmetric: Bool = false
     @Published var highlighted: ClosedRange<Int>? = nil
@@ -22,7 +21,7 @@ final class EditorViewModel: ObservableObject {
 
     var cols: Int { BraidSpec.cols(forTama: tama) }
     var canUndo: Bool { !undoStack.isEmpty }
-    var notationGroups: [NotationGroup] { Notation.groups(cells: cells, dir: readDir) }
+    var notationGroups: [NotationGroup] { Notation.groups(cells: cells) }
 
     private var externalChangeObserver: NSObjectProtocol?
 
@@ -34,7 +33,6 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         cells = s.cells
         palette = s.palette
-        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
 
         // MCP サーバなど外部からの変更を画面に反映する
         let objectID = design.objectID
@@ -59,12 +57,11 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         cells = s.cells
         palette = s.palette
-        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
     }
 
     var snapshotValue: DesignSnapshot {
         DesignSnapshot(name: design.name ?? "", tama: tama, rows: rowCount,
-                       palette: palette, cells: cells, readDir: readDir.rawValue)
+                       palette: palette, cells: cells)
     }
 
     // MARK: 塗り
@@ -150,11 +147,6 @@ final class EditorViewModel: ObservableObject {
         scheduleSave()
     }
 
-    func setReadDir(_ d: ReadDirection) {
-        readDir = d
-        scheduleSave()
-    }
-
     func setPaletteColor(_ hex: String, at index: Int) {
         guard palette.indices.contains(index) else { return }
         palette[index] = hex
@@ -175,7 +167,6 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         palette = s.palette
         cells = s.cells
-        readDir = ReadDirection(rawValue: s.readDir ?? "") ?? .center
         if !s.name.isEmpty { design.name = s.name }
         scheduleSave()
     }

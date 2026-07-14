@@ -16,9 +16,7 @@ struct PDFSheetRenderer {
     func render() -> Data? {
         let cols = BraidSpec.cols(forTama: snapshot.tama)
         let geo = GridGeometry(cols: cols, rows: snapshot.rows, cell: cell)
-        let groups = Notation.groups(
-            cells: snapshot.cells,
-            dir: ReadDirection(rawValue: snapshot.readDir ?? "") ?? .center)
+        let groups = Notation.groups(cells: snapshot.cells)
 
         let titleH: CGFloat = 34
         let notationW = notationColWidths.rows + 2 * notationColWidths.half

@@ -16,14 +16,6 @@ enum BraidSide: String, Codable {
     }
 }
 
-enum ReadDirection: String, Codable, CaseIterable, Identifiable {
-    case edge    // 端 → 中央
-    case center  // 中央 → 端
-
-    var id: String { rawValue }
-    var label: String { self == .edge ? "端 → 中央" : "中央 → 端" }
-}
-
 enum BraidSpec {
     /// 玉数 → 片面の目数（書籍 4-10/4-11 の綾書定規の目盛り）。
     /// 60玉=13目 を基点に 8玉ごとに +2目（68=15, 76=17, 84=19, 92=21, 100=23）
@@ -129,7 +121,6 @@ struct DesignSnapshot: Codable {
     var rows: Int
     var palette: [String]
     var cells: CellGrid
-    var readDir: String?
 
     /// 値を仕様範囲に正規化して返す
     func normalized() -> DesignSnapshot {
@@ -169,9 +160,8 @@ enum Notation {
 
     /// 綾の読みで使う「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目／68玉=7目）。
     /// 偶数列（縦に進む列）は綾名には入れない（糸交換のみ）
-    private static func sampledSlots(_ rowCells: [Int], dir: ReadDirection) -> [Bool] {
-        let sampled = stride(from: 1, to: rowCells.count, by: 2).map { rowCells[$0] > 0 }
-        return dir == .edge ? sampled.reversed() : Array(sampled)
+    private static func sampledSlots(_ rowCells: [Int]) -> [Bool] {
+        return stride(from: 1, to: rowCells.count, by: 2).map { rowCells[$0] > 0 }
     }
 
     /// 綾名（ナミ／上a下b…）。全区間を数字付きで略さず書く（1も書く。合計は常に6）
@@ -239,7 +229,7 @@ enum Notation {
     /// ・入れかえの目が一度に2目以上増える段 → 「2.3.」等の糸交換を前置（6個以上は「2〜M.」に圧縮）
     /// ・数字・丸数字と綾名の区切りはピリオド（ナミの前は区切りなし。書籍 4-16）
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
-    static func sideTexts(_ plane: [[Int]], dir: ReadDirection, arrows: [Bool]? = nil,
+    static func sideTexts(_ plane: [[Int]], arrows: [Bool]? = nil,
                           centerRise: [Bool]? = nil, oppositeRise: [Bool]? = nil) -> [String] {
         let rows = plane.count
         var texts: [String] = []
@@ -308,7 +298,7 @@ enum Notation {
             }
         }
         for (r, row) in plane.enumerated() {
-            let slots = sampledSlots(row, dir: dir)
+            let slots = sampledSlots(row)
             let cap = row.count
             let risesAtCenter = centerRise?[r] == true  // 中央の色による上ル
             // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。
@@ -415,7 +405,7 @@ enum Notation {
     }
 
     /// 全段を生成する（段は省略せず1段ずつ）
-    static func groups(cells: CellGrid, dir: ReadDirection) -> [NotationGroup] {
+    static func groups(cells: CellGrid) -> [NotationGroup] {
         let rows = cells.L.count
         let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
         let arrowsR = (0..<rows).map { cells.hasArrow(side: .right, row: $0) }
@@ -423,8 +413,8 @@ enum Notation {
         // 記号の法則は左右同一（⬆の表示位置だけ左が1段前 = C の自動書き込みで対応）
         let riseL = (0..<rows).map { cells.R[$0].first ?? 0 > 0 }
         let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
-        let lefts = sideTexts(cells.L, dir: dir, arrows: arrowsL, centerRise: riseL, oppositeRise: riseR)
-        let rights = sideTexts(cells.R, dir: dir, arrows: arrowsR, centerRise: riseR, oppositeRise: riseL)
+        let lefts = sideTexts(cells.L, arrows: arrowsL, centerRise: riseL, oppositeRise: riseR)
+        let rights = sideTexts(cells.R, arrows: arrowsR, centerRise: riseR, oppositeRise: riseL)
         return (0..<lefts.count).map {
             NotationGroup(from: $0, to: $0, left: lefts[$0], right: rights[$0])
         }
