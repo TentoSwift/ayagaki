@@ -5,8 +5,6 @@ struct NotationTable: View {
     var groups: [NotationGroup]
     var selected: ClosedRange<Int>? = nil
     var onTap: ((NotationGroup) -> Void)? = nil
-    /// 左右の記号セルをタップしたとき（⬆ の切り替え）。nil なら行全体タップ＝onTap
-    var onToggleArrow: ((NotationGroup, BraidSide) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,8 +19,8 @@ struct NotationTable: View {
                         .frame(width: 56, alignment: .leading)
                         .contentShape(Rectangle())
                         .onTapGesture { onTap?(g) }
-                    notationCell(g.left, side: .left, group: g)
-                    notationCell(g.right, side: .right, group: g)
+                    notationCell(g.left)
+                    notationCell(g.right)
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
@@ -32,21 +30,11 @@ struct NotationTable: View {
         }
     }
 
-    /// 記号テキスト。⬆ は中央で上ル段だけに表示され、タップで切り替え
-    @ViewBuilder
-    private func notationCell(_ text: String, side: BraidSide, group: NotationGroup) -> some View {
-        if let onToggleArrow {
-            Text(text)
-                .font(.caption)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture { onToggleArrow(group, side) }
-                .help("タップで ⬆（中央で上ル）を切り替え")
-        } else {
-            Text(text)
-                .font(.caption)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
+    /// 記号テキスト（読み取り専用）。⬆ は中央の色（d=0）から自動導出される
+    private func notationCell(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var headerRow: some View {
@@ -74,9 +62,6 @@ struct NotationView: View {
             onTap: interactive ? { g in
                 let range = g.from...g.to
                 vm.highlighted = (vm.highlighted == range) ? nil : range
-            } : nil,
-            onToggleArrow: interactive ? { g, side in
-                vm.toggleArrows(g.from...g.to, side: side)
             } : nil)
     }
 }

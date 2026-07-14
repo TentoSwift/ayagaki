@@ -101,7 +101,7 @@ struct CellGrid: Codable, Equatable {
     }
 
     /// その段の記号に ⬆（中央で上ル）を付けるか（C が唯一の情報源。
-    /// 中央の2列 d=0 への塗り/消しが自動で C を書き込み、タップでも上書きできる）
+    /// 中央の2列 d=0 への塗り/消しが自動で C を書き込む。記号表は読み取り専用）
     func hasArrow(side: BraidSide, row: Int) -> Bool {
         guard let C else { return false }
         if C.count == L.count { return row < C.count && C[row] > 0 }  // 旧形式
