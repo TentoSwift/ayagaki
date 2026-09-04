@@ -67,24 +67,68 @@ struct GridGeometry {
         return side == .left ? !par : par
     }
 
-    /// 45°に傾いた丸角長方形（カプセル状の糸の一片）。長さ 2s×0.9・幅 s×0.9・角丸 = 幅/2
+    /// 目の寸法比（半径 s に対して 長さ = 2s×lenScale・幅 = s×widScale）。
+    /// 書籍 4-14 の写真を実測した比率: 端は隣の目とわずかな隙間（幅の1割）で接し、
+    /// 平行に並ぶ目どうしの間は帯と同じ幅の白い筋があく
+    static let bandLenScale: CGFloat = 0.96
+    static let bandWidScale: CGFloat = 0.71
+
+    /// 45°に傾いた（角の尖った）長方形＝糸の一片。長さ 2s×0.96・幅 s×0.71
     static func bandRect(at c: CGPoint, radius s: CGFloat, slash: Bool)
-        -> (rect: CGRect, corner: CGFloat, transform: CGAffineTransform) {
-        let len = 2 * s * 0.9
-        let wid = s * 0.9
+        -> (rect: CGRect, transform: CGAffineTransform) {
+        let len = 2 * s * bandLenScale
+        let wid = s * bandWidScale
         let rect = CGRect(x: -len / 2, y: -wid / 2, width: len, height: wid)
         let angle: CGFloat = slash ? -.pi / 4 : .pi / 4
         let t = CGAffineTransform(translationX: c.x, y: c.y).rotated(by: angle)
-        return (rect, wid / 2, t)
+        return (rect, t)
     }
 
-    /// 帯（糸の一片）のパス
-    func bandPath(side: BraidSide, r: Int, d: Int, radius: CGFloat? = nil) -> Path {
+    /// 糸の一片の輪郭（fill）と、濃い線を引く長辺2本（edges）。
+    /// 短い端は開いたまま＝線を引かない。roundOuter = true のとき、外側（局所 +x×outerSign 方向）
+    /// の短辺だけを半円に丸め、長辺の線もその円弧に沿って回り込む（写真の外端の折り返し）。
+    static func bandCGPaths(at c: CGPoint, radius s: CGFloat, slash: Bool,
+                            roundOuter: Bool = false, outerSign: CGFloat = 1)
+        -> (fill: CGPath, edges: CGPath) {
+        let (rect, t) = bandRect(at: c, radius: s, slash: slash)
+        let a = rect.width / 2, b = rect.height / 2
+        let fill = CGMutablePath(), edges = CGMutablePath()
+        if roundOuter {
+            let sx: CGFloat = outerSign >= 0 ? 1 : -1
+            let arcX = sx * (a - b)      // 半円の中心（全長は変えない）
+            edges.move(to: CGPoint(x: -sx * a, y: -b))
+            edges.addLine(to: CGPoint(x: arcX, y: -b))
+            edges.addArc(center: CGPoint(x: arcX, y: 0), radius: b,
+                         startAngle: -.pi / 2, endAngle: .pi / 2, clockwise: sx < 0)
+            edges.addLine(to: CGPoint(x: -sx * a, y: b))
+            fill.addPath(edges)
+            fill.closeSubpath()
+        } else {
+            fill.addRect(rect)
+            edges.move(to: CGPoint(x: -a, y: -b))
+            edges.addLine(to: CGPoint(x: a, y: -b))
+            edges.move(to: CGPoint(x: -a, y: b))
+            edges.addLine(to: CGPoint(x: a, y: b))
+        }
+        var tr = t
+        return (fill.copy(using: &tr) ?? fill, edges.copy(using: &tr) ?? edges)
+    }
+
+    /// 帯（糸の一片）の塗り形と長辺2本。外端（d = cols-1）は外側の短辺が半円になる
+    func bandPaths(side: BraidSide, r: Int, d: Int, radius: CGFloat? = nil)
+        -> (fill: Path, edges: Path) {
         let s = radius ?? cell
         let c = center(side: side, r: r, d: d)
-        let (rect, corner, t) = Self.bandRect(at: c, radius: s,
-                                              slash: Self.isSlash(side: side, r: r, d: d))
-        return Path(roundedRect: rect, cornerRadius: corner).applying(t)
+        let (f, e) = Self.bandCGPaths(at: c, radius: s,
+                                      slash: Self.isSlash(side: side, r: r, d: d),
+                                      roundOuter: d == cols - 1,
+                                      outerSign: side == .right ? 1 : -1)
+        return (Path(f), Path(e))
+    }
+
+    /// 帯（糸の一片）の外形パス
+    func bandPath(side: BraidSide, r: Int, d: Int, radius: CGFloat? = nil) -> Path {
+        bandPaths(side: side, r: r, d: d, radius: radius).fill
     }
 
     /// 中央のジグザグ（d=0 の目の中心を上から順に左右交互に結ぶ折れ線）。

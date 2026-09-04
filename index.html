@@ -252,16 +252,27 @@ function isSlash(side, r, d) {
   return side === "L" ? !par : par;
 }
 
-/* 45°に傾いたカプセル（丸角長方形）の糸の一片。長さ 2*CELL*0.9・幅 CELL*0.9・角丸 = 幅/2 */
-const BAND_LEN = 2 * CELL * 0.9, BAND_WID = CELL * 0.9;
-function bandAttrs(el, x, y, slash) {
-  el.setAttribute("x", -BAND_LEN / 2);
-  el.setAttribute("y", -BAND_WID / 2);
-  el.setAttribute("width", BAND_LEN);
-  el.setAttribute("height", BAND_WID);
-  el.setAttribute("rx", BAND_WID / 2);
-  el.setAttribute("ry", BAND_WID / 2);
-  el.setAttribute("transform", `translate(${x},${y}) rotate(${slash ? -45 : 45})`);
+/* 45°に傾いた（角の尖った）長方形の糸の一片。長さ 2*CELL*0.96・幅 CELL*0.71（書籍 4-14 の写真の実測比）。
+   濃い線は長辺2本だけで、短い端は開いたまま。外端（d = N-1）だけ外側の短辺を半円に丸める */
+const BAND_LEN_SCALE = 0.96, BAND_WID_SCALE = 0.71;
+const BAND_LEN = 2 * CELL * BAND_LEN_SCALE, BAND_WID = CELL * BAND_WID_SCALE;
+const BAND_A = BAND_LEN / 2, BAND_B = BAND_WID / 2;
+
+function bandD(roundOuter, outerSign) {
+  const a = BAND_A, b = BAND_B;
+  if (!roundOuter) {
+    return {
+      fill: `M${-a},${-b} H${a} V${b} H${-a} Z`,
+      edges: `M${-a},${-b} H${a} M${-a},${b} H${a}`,
+    };
+  }
+  const sx = outerSign >= 0 ? 1 : -1;
+  const ax = sx * (a - b);       // 半円の中心（全長は変えない）
+  const open = `M${-sx * a},${-b} L${ax},${-b} A${b},${b} 0 0 ${sx > 0 ? 1 : 0} ${ax},${b} L${-sx * a},${b}`;
+  return { fill: open + " Z", edges: open };
+}
+function bandTransform(x, y, slash) {
+  return `translate(${x},${y}) rotate(${slash ? -45 : 45})`;
 }
 
 /* ===== グリッド描画 ===== */
@@ -283,15 +294,25 @@ function renderGrid() {
     for (const side of ["L", "R"]) {
       for (let d = 0; d < g.N; d++) {
         const c = cellCenter(g, side, r, d);
-        const p = document.createElementNS(NS, "rect");
-        bandAttrs(p, c.x, c.y, isSlash(side, r, d));
+        const tf = bandTransform(c.x, c.y, isSlash(side, r, d));
+        const dd = bandD(d === g.N - 1, side === "R" ? 1 : -1);
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", dd.fill);
+        p.setAttribute("transform", tf);
         p.setAttribute("class", "cell");
-        p.setAttribute("stroke", "#4a4330");
-        p.setAttribute("stroke-width", "0.6");
         p.dataset.side = side; p.dataset.r = r; p.dataset.d = d;
         p.setAttribute("fill", app.palette[app.cells[side][r][d]] || app.palette[0]);
         cellIndex[`${side}-${r}-${d}`] = p;
         frag.appendChild(p);
+        // 濃い線は長辺2本だけ（短い端は開いたまま）
+        const e = document.createElementNS(NS, "path");
+        e.setAttribute("d", dd.edges);
+        e.setAttribute("transform", tf);
+        e.setAttribute("fill", "none");
+        e.setAttribute("stroke", "#4a4330");
+        e.setAttribute("stroke-width", "0.75");
+        e.setAttribute("pointer-events", "none");
+        frag.appendChild(e);
         // 帯は菱形より細いので、タップ判定用に透明な菱形を最前面に重ねる
         const hit = document.createElementNS(NS, "polygon");
         hit.setAttribute("points", diamondPoints(c.x, c.y));
@@ -325,7 +346,7 @@ function renderGrid() {
   zig.setAttribute("points", zz.join(" "));
   zig.setAttribute("fill", "none");
   zig.setAttribute("stroke", "#4a4330");
-  zig.setAttribute("stroke-width", "1.2");
+  zig.setAttribute("stroke-width", "1.4");
   zig.setAttribute("stroke-linejoin", "round");
   zig.setAttribute("pointer-events", "none");
   frag.appendChild(zig);

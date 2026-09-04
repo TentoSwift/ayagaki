@@ -45,10 +45,11 @@ struct GridCanvasView: View {
         for r in 0..<geo.rows {
             for side in [BraidSide.left, .right] {
                 for d in 0..<geo.cols {
-                    let path = geo.bandPath(side: side, r: r, d: d)
+                    let (fill, edges) = geo.bandPaths(side: side, r: r, d: d)
                     let v = cells.value(side: side, r: r, d: d)
-                    ctx.fill(path, with: .color(colors[min(max(v, 0), colors.count - 1)]))
-                    ctx.stroke(path, with: .color(gridLine), lineWidth: 0.6)
+                    ctx.fill(fill, with: .color(colors[min(max(v, 0), colors.count - 1)]))
+                    // 濃い線は長辺2本だけ（短い端は開いたまま）
+                    ctx.stroke(edges, with: .color(gridLine), lineWidth: 0.6)
                 }
             }
             if let hi = highlighted, hi.contains(r) {
@@ -67,6 +68,6 @@ struct GridCanvasView: View {
             ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yRight), anchor: .leading)
         }
         // 中央のジグザグ
-        ctx.stroke(geo.centerZigzagPath(), with: .color(gridLine), lineWidth: 1.2)
+        ctx.stroke(geo.centerZigzagPath(), with: .color(gridLine), lineWidth: 1.4)
     }
 }

@@ -64,10 +64,17 @@ struct PDFSheetRenderer {
                     let p = CGPoint(x: origin.x + c.x, y: origin.y + c.y)
                     let v = snapshot.cells.value(side: side, r: r, d: d)
                     let slash = GridGeometry.isSlash(side: side, r: r, d: d)
-                    band(at: p, slash: slash, ctx: ctx)
+                    let (fill, edges) = GridGeometry.bandCGPaths(
+                        at: p, radius: cell, slash: slash,
+                        roundOuter: d == geo.cols - 1,
+                        outerSign: side == .right ? 1 : -1)
+                    ctx.beginPath()
+                    ctx.addPath(fill)
                     ctx.setFillColor(colors[min(max(v, 0), colors.count - 1)])
                     ctx.fillPath()
-                    band(at: p, slash: slash, ctx: ctx)
+                    // 濃い線は長辺2本だけ（短い端は開いたまま）
+                    ctx.beginPath()
+                    ctx.addPath(edges)
                     ctx.setStrokeColor(line)
                     ctx.setLineWidth(0.5)
                     ctx.strokePath()
@@ -93,20 +100,9 @@ struct PDFSheetRenderer {
             }
         }
         ctx.setStrokeColor(line)
-        ctx.setLineWidth(1.2)
+        ctx.setLineWidth(1.4)
         ctx.setLineJoin(.round)
         ctx.strokePath()
-    }
-
-    /// 45°に傾いたカプセル（丸角長方形）の糸の一片
-    private func band(at p: CGPoint, slash: Bool, ctx: CGContext) {
-        let (rect, corner, t) = GridGeometry.bandRect(at: p, radius: cell, slash: slash)
-        let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner,
-                          transform: nil)
-        var tr = t
-        guard let moved = path.copy(using: &tr) else { return }
-        ctx.beginPath()
-        ctx.addPath(moved)
     }
 
     // MARK: 記号表
