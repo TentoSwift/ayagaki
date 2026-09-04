@@ -56,6 +56,51 @@ struct GridGeometry {
         }
     }
 
+    /// 目の「糸の帯」の向き。true = ／（右上がり）、false = ＼。
+    ///
+    /// 目の中心は ／方向 e1=(c,-c) と ＼方向 e2=(c,c) が張る格子の上に乗る
+    /// （右(r,d) は (u,w)=(d-r, r)、左(r,d) は (-(r+1), r-d)）。市松にするには
+    /// 隣り合う目＝u,w どちらの隣でも向きが入れかわる必要があり、その偶奇 u+w は
+    /// 右半面で d、左半面で d+1 と一致する。これで左右が地続きの編み目（バスケットウィーブ）になる
+    static func isSlash(side: BraidSide, r: Int, d: Int) -> Bool {
+        let par = d % 2 == 0
+        return side == .left ? !par : par
+    }
+
+    /// 45°に傾いた丸角長方形（カプセル状の糸の一片）。長さ 2s×0.9・幅 s×0.9・角丸 = 幅/2
+    static func bandRect(at c: CGPoint, radius s: CGFloat, slash: Bool)
+        -> (rect: CGRect, corner: CGFloat, transform: CGAffineTransform) {
+        let len = 2 * s * 0.9
+        let wid = s * 0.9
+        let rect = CGRect(x: -len / 2, y: -wid / 2, width: len, height: wid)
+        let angle: CGFloat = slash ? -.pi / 4 : .pi / 4
+        let t = CGAffineTransform(translationX: c.x, y: c.y).rotated(by: angle)
+        return (rect, wid / 2, t)
+    }
+
+    /// 帯（糸の一片）のパス
+    func bandPath(side: BraidSide, r: Int, d: Int, radius: CGFloat? = nil) -> Path {
+        let s = radius ?? cell
+        let c = center(side: side, r: r, d: d)
+        let (rect, corner, t) = Self.bandRect(at: c, radius: s,
+                                              slash: Self.isSlash(side: side, r: r, d: d))
+        return Path(roundedRect: rect, cornerRadius: corner).applying(t)
+    }
+
+    /// 中央のジグザグ（d=0 の目の中心を上から順に左右交互に結ぶ折れ線）。
+    /// y の並びは 右r → 左r → 右r+1 …（右段が先に始まるため）
+    func centerZigzagPath() -> Path {
+        var p = Path()
+        var first = true
+        for r in 0..<rows {
+            for side in [BraidSide.right, .left] {
+                let c = center(side: side, r: r, d: 0)
+                if first { p.move(to: c); first = false } else { p.addLine(to: c) }
+            }
+        }
+        return p
+    }
+
     func diamondPath(at c: CGPoint, radius: CGFloat? = nil) -> Path {
         let s = radius ?? cell
         var p = Path()

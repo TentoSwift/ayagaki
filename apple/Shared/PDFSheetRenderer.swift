@@ -54,7 +54,8 @@ struct PDFSheetRenderer {
 
     private func drawGrid(geo: GridGeometry, origin: CGPoint, ctx: CGContext) {
         let colors = snapshot.palette.map { cgColor(hex: $0) }
-        let line = gray(0.55)
+        // 糸の輪郭（濃い茶灰色）
+        let line = CGColor(srgbRed: 0x4a / 255.0, green: 0x43 / 255.0, blue: 0x30 / 255.0, alpha: 1)
 
         for r in 0..<geo.rows {
             for side in [BraidSide.left, .right] {
@@ -62,12 +63,13 @@ struct PDFSheetRenderer {
                     let c = geo.center(side: side, r: r, d: d)
                     let p = CGPoint(x: origin.x + c.x, y: origin.y + c.y)
                     let v = snapshot.cells.value(side: side, r: r, d: d)
-                    diamond(at: p, ctx: ctx)
+                    let slash = GridGeometry.isSlash(side: side, r: r, d: d)
+                    band(at: p, slash: slash, ctx: ctx)
                     ctx.setFillColor(colors[min(max(v, 0), colors.count - 1)])
                     ctx.fillPath()
-                    diamond(at: p, ctx: ctx)
+                    band(at: p, slash: slash, ctx: ctx)
                     ctx.setStrokeColor(line)
-                    ctx.setLineWidth(0.4)
+                    ctx.setLineWidth(0.5)
                     ctx.strokePath()
                 }
             }
@@ -80,15 +82,31 @@ struct PDFSheetRenderer {
                      size: 7, bold: false, color: gray(0.45), ctx: ctx)
         }
 
+        // 中央のジグザグ（d=0 の目の中心を上から順に左右交互に結ぶ）
+        ctx.beginPath()
+        var first = true
+        for r in 0..<geo.rows {
+            for side in [BraidSide.right, .left] {
+                let c = geo.center(side: side, r: r, d: 0)
+                let p = CGPoint(x: origin.x + c.x, y: origin.y + c.y)
+                if first { ctx.move(to: p); first = false } else { ctx.addLine(to: p) }
+            }
+        }
+        ctx.setStrokeColor(line)
+        ctx.setLineWidth(1.2)
+        ctx.setLineJoin(.round)
+        ctx.strokePath()
     }
 
-    private func diamond(at p: CGPoint, ctx: CGContext) {
+    /// 45°に傾いたカプセル（丸角長方形）の糸の一片
+    private func band(at p: CGPoint, slash: Bool, ctx: CGContext) {
+        let (rect, corner, t) = GridGeometry.bandRect(at: p, radius: cell, slash: slash)
+        let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner,
+                          transform: nil)
+        var tr = t
+        guard let moved = path.copy(using: &tr) else { return }
         ctx.beginPath()
-        ctx.move(to: CGPoint(x: p.x, y: p.y - cell))
-        ctx.addLine(to: CGPoint(x: p.x + cell, y: p.y))
-        ctx.addLine(to: CGPoint(x: p.x, y: p.y + cell))
-        ctx.addLine(to: CGPoint(x: p.x - cell, y: p.y))
-        ctx.closePath()
+        ctx.addPath(moved)
     }
 
     // MARK: 記号表

@@ -71,8 +71,8 @@
   .swatch span { font-size: 11px; }
 
   svg.grid { display: block; touch-action: none; }
-  svg.grid polygon.cell { cursor: crosshair; }
-  svg.grid polygon.cell.rowHi { stroke: #e0392b; stroke-width: 1.6; }
+  svg.grid .cell { cursor: crosshair; }
+  svg.grid .cell.rowHi { stroke: #e0392b; stroke-width: 1.6; }
   svg.grid text.num { font-size: 9px; fill: #9a927e; user-select: none; }
 
   .notation { max-height: 320px; overflow: auto; }
@@ -244,6 +244,26 @@ function diamondPoints(x, y) {
   return `${x},${y - CELL} ${x + CELL},${y} ${x},${y + CELL} ${x - CELL},${y}`;
 }
 
+/* 目の「糸の帯」の向き。true = ／（右上がり）、false = ＼。
+   目の中心は ／方向(CELL,-CELL) と ＼方向(CELL,CELL) の格子に乗る。市松（隣り合う目で必ず入れかわる）
+   にするための偶奇は右半面で d、左半面で d+1（Swift の GridGeometry.isSlash と同式） */
+function isSlash(side, r, d) {
+  const par = d % 2 === 0;
+  return side === "L" ? !par : par;
+}
+
+/* 45°に傾いたカプセル（丸角長方形）の糸の一片。長さ 2*CELL*0.9・幅 CELL*0.9・角丸 = 幅/2 */
+const BAND_LEN = 2 * CELL * 0.9, BAND_WID = CELL * 0.9;
+function bandAttrs(el, x, y, slash) {
+  el.setAttribute("x", -BAND_LEN / 2);
+  el.setAttribute("y", -BAND_WID / 2);
+  el.setAttribute("width", BAND_LEN);
+  el.setAttribute("height", BAND_WID);
+  el.setAttribute("rx", BAND_WID / 2);
+  el.setAttribute("ry", BAND_WID / 2);
+  el.setAttribute("transform", `translate(${x},${y}) rotate(${slash ? -45 : 45})`);
+}
+
 /* ===== グリッド描画 ===== */
 const gridSvg = document.getElementById("gridSvg");
 let cellIndex = {};  // "side-r-d" -> polygon要素
@@ -256,21 +276,29 @@ function renderGrid() {
   gridSvg.innerHTML = "";
   cellIndex = {};
   const frag = document.createDocumentFragment();
+  const hits = [];
   const NS = "http://www.w3.org/2000/svg";
 
   for (let r = 0; r < app.rows; r++) {
     for (const side of ["L", "R"]) {
       for (let d = 0; d < g.N; d++) {
         const c = cellCenter(g, side, r, d);
-        const p = document.createElementNS(NS, "polygon");
-        p.setAttribute("points", diamondPoints(c.x, c.y));
+        const p = document.createElementNS(NS, "rect");
+        bandAttrs(p, c.x, c.y, isSlash(side, r, d));
         p.setAttribute("class", "cell");
-        p.setAttribute("stroke", "#b8b096");
+        p.setAttribute("stroke", "#4a4330");
         p.setAttribute("stroke-width", "0.6");
         p.dataset.side = side; p.dataset.r = r; p.dataset.d = d;
         p.setAttribute("fill", app.palette[app.cells[side][r][d]] || app.palette[0]);
         cellIndex[`${side}-${r}-${d}`] = p;
         frag.appendChild(p);
+        // 帯は菱形より細いので、タップ判定用に透明な菱形を最前面に重ねる
+        const hit = document.createElementNS(NS, "polygon");
+        hit.setAttribute("points", diamondPoints(c.x, c.y));
+        hit.setAttribute("class", "cell");
+        hit.setAttribute("fill", "transparent");
+        hit.dataset.side = side; hit.dataset.r = r; hit.dataset.d = d;
+        hits.push(hit);
       }
     }
     // 段番号（両端。右半面は1目ずれる）
@@ -285,6 +313,23 @@ function renderGrid() {
       frag.appendChild(t);
     }
   }
+  // 中央のジグザグ（d=0 の目の中心を上から順に左右交互に結ぶ。右段が先に始まる）
+  const zz = [];
+  for (let r = 0; r < app.rows; r++) {
+    for (const side of ["R", "L"]) {
+      const c = cellCenter(g, side, r, 0);
+      zz.push(`${c.x},${c.y}`);
+    }
+  }
+  const zig = document.createElementNS(NS, "polyline");
+  zig.setAttribute("points", zz.join(" "));
+  zig.setAttribute("fill", "none");
+  zig.setAttribute("stroke", "#4a4330");
+  zig.setAttribute("stroke-width", "1.2");
+  zig.setAttribute("stroke-linejoin", "round");
+  zig.setAttribute("pointer-events", "none");
+  frag.appendChild(zig);
+  for (const h of hits) frag.appendChild(h);
   gridSvg.appendChild(frag);
 }
 

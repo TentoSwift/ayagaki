@@ -39,21 +39,22 @@ struct GridCanvasView: View {
                      cells: CellGrid, palette: [String],
                      highlighted: ClosedRange<Int>?) {
         let colors = palette.map { Color(hex: $0) }
-        let gridLine = Color(white: 0.5).opacity(0.55)
+        // 糸の輪郭（濃い茶灰色）
+        let gridLine = Color(red: 0x4a / 255.0, green: 0x43 / 255.0, blue: 0x30 / 255.0)
 
         for r in 0..<geo.rows {
             for side in [BraidSide.left, .right] {
                 for d in 0..<geo.cols {
-                    let path = geo.diamondPath(at: geo.center(side: side, r: r, d: d))
+                    let path = geo.bandPath(side: side, r: r, d: d)
                     let v = cells.value(side: side, r: r, d: d)
                     ctx.fill(path, with: .color(colors[min(max(v, 0), colors.count - 1)]))
-                    ctx.stroke(path, with: .color(gridLine), lineWidth: 0.5)
+                    ctx.stroke(path, with: .color(gridLine), lineWidth: 0.6)
                 }
             }
             if let hi = highlighted, hi.contains(r) {
                 for side in [BraidSide.left, .right] {
                     for d in 0..<geo.cols {
-                        let path = geo.diamondPath(at: geo.center(side: side, r: r, d: d))
+                        let path = geo.bandPath(side: side, r: r, d: d)
                         ctx.stroke(path, with: .color(.red), lineWidth: 1.4)
                     }
                 }
@@ -65,5 +66,7 @@ struct GridCanvasView: View {
             ctx.draw(num, at: CGPoint(x: geo.margin + geo.numW - 6, y: yLeft), anchor: .trailing)
             ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + 6, y: yRight), anchor: .leading)
         }
+        // 中央のジグザグ
+        ctx.stroke(geo.centerZigzagPath(), with: .color(gridLine), lineWidth: 1.2)
     }
 }
