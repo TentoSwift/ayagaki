@@ -63,8 +63,9 @@ struct GridGeometry {
     /// 隣り合う目＝u,w どちらの隣でも向きが入れかわる必要があり、その偶奇 u+w は
     /// 右半面で d、左半面で d+1 と一致する。これで左右が地続きの編み目（バスケットウィーブ）になる
     static func isSlash(side: BraidSide, r: Int, d: Int) -> Bool {
+        // 書籍 4-14 の写真の計測: 右半面 d=0 は＼、左半面 d=0 は／（d が1増えるごとに反転）
         let par = d % 2 == 0
-        return side == .left ? !par : par
+        return side == .left ? par : !par
     }
 
     /// 目の寸法比（半径 s に対して 長さ = 2s×lenScale・幅 = s×widScale）。

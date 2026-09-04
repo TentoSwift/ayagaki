@@ -248,8 +248,9 @@ function diamondPoints(x, y) {
    目の中心は ／方向(CELL,-CELL) と ＼方向(CELL,CELL) の格子に乗る。市松（隣り合う目で必ず入れかわる）
    にするための偶奇は右半面で d、左半面で d+1（Swift の GridGeometry.isSlash と同式） */
 function isSlash(side, r, d) {
+  // 書籍 4-14 の写真の計測: 右半面 d=0 は＼、左半面 d=0 は／（d が1増えるごとに反転）
   const par = d % 2 === 0;
-  return side === "L" ? !par : par;
+  return side === "L" ? par : !par;
 }
 
 /* 45°に傾いた（角の尖った）長方形の糸の一片。長さ 2*CELL*0.96・幅 CELL*0.71（書籍 4-14 の写真の実測比）。
