@@ -871,8 +871,12 @@ function highlightRows(from, to, on) {
 // 帯（糸列）は左から A・B（左の対）、間を空けて C・D（右の対）。
 const TD = {
   xA: 1.15, xB: 2.30, xC: 4.95, xD: 6.10,
-  width: 7.85, bandHW: 0.33, dotR: 0.34, loopReach: 0.80,
+  width: 7.85, bandHW: 0.33, dotR: 0.34,
+  get loopA() { return this.dotR + 0.34; },   // ループ（玉を回る半楕円）が玉の中心から外へ張り出す量
+  hookOffset: 0.30,     // 図1 のフックの中心を下げる量
   get xGap() { return (this.xC + this.xD) / 2; },
+  get turnR() { return this.xGap - this.xC; },   // 素通りの縦線 ↔ ループ の四分円の半径
+  get loopB() { return 1 - this.turnR; },        // ループの縦の半径（turnR と足して1段）
 };
 const TD_UNIT = 20;   // 1段の間隔（px）
 
@@ -889,19 +893,77 @@ function tdSlotRows(n, second, count) {
   for (let i = 0; i < count; i++) out.push(last - 2 * (count - 1 - i));
   return out;
 }
-// 通過点を Catmull-Rom で滑らかに繋ぐ
-function tdSmooth(pts) {
-  if (pts.length < 2) return "";
-  let d = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i];
-    const p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-    d += ` C ${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p2[0]} ${p2[1]}`;
-  }
-  return d;
+// 経路を「直線・四分円・玉を回る半楕円」で接線連続に組み立てるペン。
+// 円弧もすべて3次ベジェに落とすので、アプリ（TedoriPen）と同じ形になる
+const TD_KAPPA = 0.5522847498307936;
+function tdPen(map) {
+  let d = "", cur = [0, 0];
+  const F = (p) => { const q = map(p[0], p[1]); return `${q[0]} ${q[1]}`; };
+  return {
+    get d() { return d; },
+    get cur() { return cur; },
+    move(p) { d += `M ${F(p)}`; cur = p; },
+    line(p) { d += ` L ${F(p)}`; cur = p; },
+    curve(c1, c2, p) { d += ` C ${F(c1)} ${F(c2)} ${F(p)}`; cur = p; },
+    // 四分円: 今の点から向き u で入り、半径 r で向き v へ曲がる（u ⊥ v の単位ベクトル）
+    quarter(u, v, r) {
+      const k = TD_KAPPA, p = cur;
+      const q = [p[0] + (u[0] + v[0]) * r, p[1] + (u[1] + v[1]) * r];
+      this.curve([p[0] + u[0] * k * r, p[1] + u[1] * k * r],
+                 [q[0] - v[0] * k * r, q[1] - v[1] * k * r], q);
+    },
+    // 玉を回るループ（半楕円）。t=0 が真上（接線は水平・外向き）、π/2 が外端、π が真下
+    loop(c, a, b, side, t0, t1) {
+      const steps = Math.max(1, Math.ceil((t1 - t0) / (Math.PI / 2) - 1e-9));
+      const dt = (t1 - t0) / steps, al = 4 / 3 * Math.tan(dt / 4);
+      const pt = t => [c[0] + side * a * Math.sin(t), c[1] - b * Math.cos(t)];
+      const tg = t => [side * a * Math.cos(t), b * Math.sin(t)];
+      for (let i = 0; i < steps; i++) {
+        const ta = t0 + dt * i, tb = ta + dt;
+        const pa = pt(ta), pb = pt(tb), da = tg(ta), db = tg(tb);
+        this.curve([pa[0] + al * da[0], pa[1] + al * da[1]],
+                   [pb[0] - al * db[0], pb[1] - al * db[1]], pb);
+      }
+    },
+  };
 }
+// 動かす糸の経路（アプリの TedoriLayout.threadSegments と同じ手順）
+function tdThreadPath(slots, second, n, y, map) {
+  const pen = tdPen(map);
+  const a = TD.loopA, b = TD.loopB, rt = TD.turnR, rows = n + 1;
+  const y1 = y(1), DOWN = [0, 1], RIGHT = [1, 0];
+  if (second) {
+    // 図2: 尾は D の一番上の白玉の左から出て、S 字で C の一番上の黒玉を回る（写真 h_nami2）
+    const tail = [TD.xD - TD.dotR - 0.14, y1 + 0.06], entry = [TD.xC, y1 - b];
+    const h = (tail[0] - entry[0]) * 0.55;
+    pen.move(tail);
+    pen.curve([tail[0] - h, tail[1]], [entry[0] + h, entry[1]], entry);
+    pen.loop([TD.xC, y1], a, b, -1, 0, Math.PI);
+  } else {
+    // 図1: C の一番上の黒玉の左に小さくフックしてから間へ降りる（写真 h_nami1）
+    const c = [TD.xC, y1 + TD.hookOffset], t0 = 0.55;
+    pen.move([c[0] - a * Math.sin(t0), c[1] - b * Math.cos(t0)]);
+    pen.loop(c, a, b, -1, t0, Math.PI);
+  }
+  pen.quarter(RIGHT, DOWN, rt);              // → 素通りの縦線へ
+  tdSlotRows(n, second, slots.length).forEach((k, i) => {
+    const s = slots[i] ? 1 : -1, cx = slots[i] ? TD.xD : TD.xC;
+    pen.line([TD.xGap, y(k) - 1]);           // 素通り（縦一直線）
+    pen.quarter(DOWN, [s, 0], rt);
+    pen.loop([cx, y(k)], a, b, s, 0, Math.PI);
+    pen.quarter([-s, 0], DOWN, rt);
+  });
+  // 最後の段を素通りしてから、下端の矢印へ大きく滑らかに曲がる（急な折れ角なし）
+  pen.line([TD.xGap, y(rows)]);
+  const from = [TD.xGap - 0.55, y(rows) + 0.80], to = [TD.xB - 0.55, y(rows) + 1.60];
+  const dx = to[0] - from[0], dy = to[1] - from[1], len = Math.max(0.001, Math.hypot(dx, dy));
+  const p0 = pen.cur;
+  const h2 = Math.max(0.001, Math.hypot(from[0] - p0[0], from[1] - p0[1])) * 0.55;
+  pen.curve([p0[0], p0[1] + h2],
+            [from[0] - dx / len * h2, from[1] - dy / len * h2], from);
+  return pen.d;
+}
+
 // 手取り図 1 枚（SVG 文字列）。slots は上から順（true=上）
 function tedoriSVG(slots, second, mirrored, n, rise) {
   const rows = n + 1, U = TD_UNIT;
@@ -927,34 +989,11 @@ function tedoriSVG(slots, second, mirrored, n, rise) {
     }
   }
 
-  // 動かす糸の経路
-  const pts = [];
-  const y1 = y(1);
-  // 始点: C の一番上の黒玉の左に小さくフックする
-  pts.push(P(TD.xC - 0.55, y1 - 0.34), P(TD.xC - 0.88, y1 + 0.04), P(TD.xC - 0.12, y1 + 0.40));
-  // 図2 は続けて D の一番上の白玉の右へ回ってから間に降りる（写真 h_nami2 / h_ue1_2）
-  if (second) pts.push(P(TD.xD + 0.60, y1 + 0.10));
-  pts.push(P(TD.xGap, y1 + 0.90));
+  // 動かす糸の経路（円弧と S 字を接線連続でつないだ経路）
   const srows = tdSlotRows(n, second, slots.length);
-  for (let k = 2; k <= rows; k++) {
-    const i = srows.indexOf(k);
-    if (i >= 0) {
-      // 上 = その段の白玉（D）の右を回るループ、下 = 黒玉（C）の左を回るループ
-      const c = slots[i] ? TD.xD : TD.xC;
-      const sg = slots[i] ? 1 : -1;          // 外向き（上は右、下は左）
-      const yk = y(k);
-      pts.push(P(TD.xGap, yk - 0.60), P(c + sg * -0.10, yk - 0.52), P(c + sg * 0.50, yk - 0.40),
-               P(c + sg * TD.loopReach, yk), P(c + sg * 0.50, yk + 0.40),
-               P(c + sg * -0.10, yk + 0.52), P(TD.xGap, yk + 0.60));
-    } else {
-      pts.push(P(TD.xGap, y(k)));            // 素通り
-    }
-  }
-  // 最後の段を素通りしてから左に曲がる（下端の交差へ入る）
+  out += `<path d="${tdThreadPath(slots, second, n, y, (x, yy) => P(x, yy))}" fill="none" `
+      + `stroke="#1a1a1a" stroke-width="${U * 0.12}" stroke-linecap="round" stroke-linejoin="round"/>`;
   const ay = y(rows) + 1.20, cdy = 0.40;   // 交差の中心の y ／ 交差の傾き
-  pts.push(P(TD.xGap, y(rows) + 0.60), P(TD.xGap - 0.55, ay - cdy));
-  out += `<path d="${tdSmooth(pts)}" fill="none" stroke="#1a1a1a" stroke-width="${U * 0.11}" `
-      + `stroke-linecap="round" stroke-linejoin="round"/>`;
 
   // 下端の交差: 動かした糸（黒・反対の対へ渡る）と、反対の対から渡ってくる相手の糸（灰・逆向き）。
   // ⬆ の段は動かした糸が相手の上を通る（上ル）＝相手の線を交差で途切れさせる。

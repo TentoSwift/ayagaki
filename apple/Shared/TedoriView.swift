@@ -28,6 +28,58 @@ struct TedoriMark: Equatable {
     var label: String { circled ? Notation.circledText(number) : "\(number)" }
 }
 
+/// 経路の一区間。円弧・楕円弧もすべて3次ベジェに落として持つ（Swift と Web で同じ形にするため）
+enum TedoriSeg: Equatable {
+    case move(CGPoint)
+    case line(CGPoint)
+    case curve(CGPoint, CGPoint, CGPoint)   // control1, control2, to
+}
+
+/// 経路を「直線・四分円・玉を回る半楕円」で接線連続に組み立てるペン
+struct TedoriPen {
+    /// 円弧を3次ベジェで表すときの制御点の伸ばし方（90度の弧）
+    static let kappa: CGFloat = 0.5522847498307936
+
+    private(set) var segs: [TedoriSeg] = []
+    private(set) var cur: CGPoint = .zero
+
+    mutating func move(_ p: CGPoint) { segs.append(.move(p)); cur = p }
+    mutating func line(_ p: CGPoint) { segs.append(.line(p)); cur = p }
+    mutating func curve(_ c1: CGPoint, _ c2: CGPoint, _ p: CGPoint) {
+        segs.append(.curve(c1, c2, p)); cur = p
+    }
+
+    /// 四分円。今の点から向き u で入り、半径 r で向き v へ曲がる（u と v は直交する単位ベクトル）
+    mutating func quarter(u: CGPoint, v: CGPoint, r: CGFloat) {
+        let k = Self.kappa, p = cur
+        let q = CGPoint(x: p.x + (u.x + v.x) * r, y: p.y + (u.y + v.y) * r)
+        curve(CGPoint(x: p.x + u.x * k * r, y: p.y + u.y * k * r),
+              CGPoint(x: q.x - v.x * k * r, y: q.y - v.y * k * r), q)
+    }
+
+    /// 玉を回るループ（半楕円）。t=0 が真上、t=π/2 が外端（side=+1 で右、-1 で左）、t=π が真下。
+    /// t=0 の接線は水平（外向き）、t=π の接線も水平（内向き）なので、前後の四分円と接線が揃う
+    mutating func loop(center c: CGPoint, a: CGFloat, b: CGFloat, side: CGFloat,
+                       from t0: CGFloat, to t1: CGFloat) {
+        let steps = max(1, Int(((t1 - t0) / (.pi / 2) - 1e-9).rounded(.up)))
+        let dt = (t1 - t0) / CGFloat(steps)
+        let al = 4.0 / 3.0 * tan(dt / 4)
+        func pointAt(_ t: CGFloat) -> CGPoint {
+            CGPoint(x: c.x + side * a * sin(t), y: c.y - b * cos(t))
+        }
+        func tangentAt(_ t: CGFloat) -> CGPoint {
+            CGPoint(x: side * a * cos(t), y: b * sin(t))
+        }
+        for i in 0..<steps {
+            let ta = t0 + dt * CGFloat(i), tb = ta + dt
+            let pa = pointAt(ta), pb = pointAt(tb)
+            let da = tangentAt(ta), db = tangentAt(tb)
+            curve(CGPoint(x: pa.x + al * da.x, y: pa.y + al * da.y),
+                  CGPoint(x: pb.x - al * db.x, y: pb.y - al * db.y), pb)
+        }
+    }
+}
+
 /// 手取り図の座標系（1段の間隔を 1.0 とする正規化座標。写真 h_nami1/h_ue1_1 の実測から）
 struct TedoriLayout {
     let n: Int          // 片腕の糸数 N
@@ -41,8 +93,15 @@ struct TedoriLayout {
     var xGap: CGFloat { (xC + xD) / 2 }
     let bandHalfWidth: CGFloat = 0.33
     let dotRadius: CGFloat = 0.34
-    /// ループが玉の外側へ張り出す量
-    let loopReach: CGFloat = 0.80
+    /// ループ（玉を回る半楕円）が玉の中心から外へ張り出す量（写真 h_nami1 実測 0.60）
+    var loopA: CGFloat { dotRadius + 0.34 }
+    /// 素通りの縦線 ↔ ループ をつなぐ四分円の半径（＝縦線と帯の間隔）
+    var turnR: CGFloat { xGap - xC }
+    /// ループの縦の半径。turnR と足して 1 段になるので、ループの前後の段では
+    /// 必ず素通りの位置（xGap）を真下向きで通る＝隣のループと接線連続でつながる
+    var loopB: CGFloat { 1 - turnR }
+    /// 図1 のフック（C の一番上の黒玉の左を小さく回る）の中心を下げる量
+    let hookOffset: CGFloat = 0.30
 
     var width: CGFloat { 7.85 }
     var height: CGFloat { CGFloat(rows) + 3.0 }
@@ -71,42 +130,53 @@ struct TedoriLayout {
         return (0..<count).map { last - 2 * (count - 1 - $0) }
     }
 
-    /// 動かす糸の経路（滑らかに繋ぐ前の通過点）
-    func wavePoints(slots: [Bool]) -> [CGPoint] {
-        var pts: [CGPoint] = []
+    /// 動かす糸の経路。折れ線をならすのではなく、
+    /// 「直線（素通り）→四分円→玉を回る半楕円→四分円→直線」を**接線連続**に組み立てる。
+    /// ループの前後ちょうど 1 段の所で必ず (xGap, 段) を真下向きに通るので、
+    /// 隣り合うループどうしは自然な S 字でつながり、素通りの段は縦一直線になる。
+    func threadSegments(slots: [Bool]) -> [TedoriSeg] {
+        var pen = TedoriPen()
+        let a = loopA, b = loopB, rt = turnR
         let y1 = y(1)
-        // 始点: C の一番上の黒玉の左に小さくフックする
-        pts.append(CGPoint(x: xC - 0.55, y: y1 - 0.34))
-        pts.append(CGPoint(x: xC - 0.88, y: y1 + 0.04))
-        pts.append(CGPoint(x: xC - 0.12, y: y1 + 0.40))
+        let down = CGPoint(x: 0, y: 1)
+        let right = CGPoint(x: 1, y: 0)
         if second {
-            // 図2 は続けて D の一番上の白玉の右へ回ってから間に降りる（写真 h_nami2 / h_ue1_2）
-            pts.append(CGPoint(x: xD + 0.60, y: y1 + 0.10))
+            // 図2: 尾は D の一番上の白玉の左から出て、S 字で C の一番上の黒玉を回る（写真 h_nami2）
+            let tail = CGPoint(x: xD - dotRadius - 0.14, y: y1 + 0.06)
+            let entry = CGPoint(x: xC, y: y1 - b)
+            let h = (tail.x - entry.x) * 0.55
+            pen.move(tail)
+            pen.curve(CGPoint(x: tail.x - h, y: tail.y), CGPoint(x: entry.x + h, y: entry.y), entry)
+            pen.loop(center: CGPoint(x: xC, y: y1), a: a, b: b, side: -1, from: 0, to: .pi)
+        } else {
+            // 図1: C の一番上の黒玉の左に小さくフックしてから間へ降りる（写真 h_nami1）
+            let c = CGPoint(x: xC, y: y1 + hookOffset)
+            let t0: CGFloat = 0.55
+            pen.move(CGPoint(x: c.x - a * sin(t0), y: c.y - b * cos(t0)))
+            pen.loop(center: c, a: a, b: b, side: -1, from: t0, to: .pi)
         }
-        pts.append(CGPoint(x: xGap, y: y1 + 0.90))
+        pen.quarter(u: right, v: down, r: rt)      // → 素通りの縦線へ
 
-        let rowsOfSlots = slotRows(count: slots.count)
-        for k in 2...rows {
-            if let i = rowsOfSlots.firstIndex(of: k) {
-                // 上 = その段の白玉（D）の右を回るループ、下 = 黒玉（C）の左を回るループ
-                let center = slots[i] ? xD : xC
-                let sign: CGFloat = slots[i] ? 1 : -1   // 外向き（上は右、下は左）
-                let yk = y(k)
-                pts.append(CGPoint(x: xGap, y: yk - 0.60))
-                pts.append(CGPoint(x: center + sign * -0.10, y: yk - 0.52))
-                pts.append(CGPoint(x: center + sign * 0.50, y: yk - 0.40))
-                pts.append(CGPoint(x: center + sign * loopReach, y: yk))
-                pts.append(CGPoint(x: center + sign * 0.50, y: yk + 0.40))
-                pts.append(CGPoint(x: center + sign * -0.10, y: yk + 0.52))
-                pts.append(CGPoint(x: xGap, y: yk + 0.60))
-            } else {
-                pts.append(CGPoint(x: xGap, y: y(k)))   // 素通り
-            }
+        for (i, k) in slotRows(count: slots.count).enumerated() {
+            // 上 = その段の白玉（D）の右を回る／下 = 黒玉（C）の左を回る
+            let s: CGFloat = slots[i] ? 1 : -1
+            let cx = slots[i] ? xD : xC
+            pen.line(CGPoint(x: xGap, y: y(k) - 1))          // 素通り（縦一直線）
+            pen.quarter(u: down, v: CGPoint(x: s, y: 0), r: rt)
+            pen.loop(center: CGPoint(x: cx, y: y(k)), a: a, b: b, side: s, from: 0, to: .pi)
+            pen.quarter(u: CGPoint(x: -s, y: 0), v: down, r: rt)
         }
-        // 最後の段を素通りしてから左に曲がる（下端の交差へ入る）
-        pts.append(CGPoint(x: xGap, y: y(rows) + 0.60))
-        pts.append(CGPoint(x: xGap - 0.55, y: crossY - crossDY))
-        return pts
+        // 最後の段を素通りしてから、下端の矢印へ大きく滑らかに曲がる（急な折れ角なし）
+        pen.line(CGPoint(x: xGap, y: y(rows)))
+        let ar = arrow
+        let dx = ar.to.x - ar.from.x, dy = ar.to.y - ar.from.y
+        let len = max(0.001, sqrt(dx * dx + dy * dy))
+        let ux = dx / len, uy = dy / len
+        let p0 = pen.cur, p1 = ar.from
+        let h = max(0.001, sqrt(pow(p1.x - p0.x, 2) + pow(p1.y - p0.y, 2))) * 0.55
+        pen.curve(CGPoint(x: p0.x, y: p0.y + h),
+                  CGPoint(x: p1.x - ux * h, y: p1.y - uy * h), p1)
+        return pen.segs
     }
 
     /// 下端の交差の中心の y と傾き
@@ -185,10 +255,18 @@ struct TedoriCanvas: View {
         let slots = figure.slots
         // 帯（糸列）・糸数・玉
         drawBands(ctx, lay, mirrored: figure.mirrored, unit: unit)
-        // 動かす糸
-        let pts = lay.wavePoints(slots: slots).map { pt($0, lay) }
-        ctx.stroke(Self.smoothPath(pts), with: .color(.black),
-                   style: StrokeStyle(lineWidth: max(1.4, unit * 0.11), lineCap: .round, lineJoin: .round))
+        // 動かす糸（円弧と S 字を接線連続でつないだ経路）
+        var thread = Path()
+        for seg in lay.threadSegments(slots: slots) {
+            switch seg {
+            case .move(let p): thread.move(to: pt(p, lay))
+            case .line(let p): thread.addLine(to: pt(p, lay))
+            case .curve(let c1, let c2, let p):
+                thread.addCurve(to: pt(p, lay), control1: pt(c1, lay), control2: pt(c2, lay))
+            }
+        }
+        ctx.stroke(thread, with: .color(.black),
+                   style: StrokeStyle(lineWidth: max(1.4, unit * 0.12), lineCap: .round, lineJoin: .round))
         // 下端の交差: 動かした糸（黒・反対の対へ渡る）と、反対の対から渡ってくる相手の糸（灰・逆向き）。
         // ⬆ の段は動かした糸が相手の上を通る（上ル）＝相手の線を交差で途切れさせる。
         // ⬆ の無い段は下を通る（下ル）＝動かした糸を交差で途切れさせる（ユーザー確認 2026-09-09）
@@ -255,20 +333,6 @@ struct TedoriCanvas: View {
         ctx.fill(head, with: .color(color))
     }
 
-    /// 通過点を Catmull-Rom で滑らかに繋ぐ
-    static func smoothPath(_ pts: [CGPoint]) -> Path {
-        var path = Path()
-        guard pts.count > 1 else { return path }
-        path.move(to: pts[0])
-        for i in 0..<(pts.count - 1) {
-            let p0 = pts[max(i - 1, 0)], p1 = pts[i]
-            let p2 = pts[i + 1], p3 = pts[min(i + 2, pts.count - 1)]
-            let c1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
-            let c2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
-            path.addCurve(to: p2, control1: c1, control2: c2)
-        }
-        return path
-    }
 }
 
 // MARK: - 糸交換の図（書籍 4-8 下段 A/B）
