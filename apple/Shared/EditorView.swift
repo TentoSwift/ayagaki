@@ -11,8 +11,9 @@ struct EditorView: View {
     @State private var paintEnabled = true          // iOS: 塗る / スクロール切り替え
     @State private var showSettings = false
     @State private var showClearConfirm = false
-    @State private var compactTab = 0               // 0=記号, 1=手取り図, 2=プレビュー
-    @State private var notationTab = 0              // 0=記号表, 1=手取り図（全段）
+    // デバッグ用: 起動引数 --tedori で手取り図モードを開いた状態で起動（シミュレータでの表示確認用）
+    @State private var compactTab = CommandLine.arguments.contains("--tedori") ? 1 : 0   // 0=記号, 1=手取り図, 2=プレビュー
+    @State private var notationTab = CommandLine.arguments.contains("--tedori") ? 1 : 0  // 0=記号表, 1=手取り図（全段）
 
     @State private var exportingJSON = false
     @State private var importingJSON = false

@@ -24,6 +24,12 @@ struct ContentView: View {
                     }
             }
             .navigationTitle("綾書")
+            .onAppear {
+                // デバッグ用: 起動引数 --open-latest で最新のデザインを自動で開く（シミュレータでの表示確認用）
+                if CommandLine.arguments.contains("--open-latest"), selection == nil {
+                    selection = designs.first?.objectID
+                }
+            }
             #if os(macOS)
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
             .safeAreaInset(edge: .bottom) {
