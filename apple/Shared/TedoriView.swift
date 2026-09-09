@@ -197,16 +197,19 @@ struct TedoriCanvas: View {
         let pFrom = pt(p.from, lay), pTo = pt(p.to, lay)
         let gap = unit * 0.30
         let gray = Color(white: 0.60)
-        crossLine(ctx, pFrom, pTo, color: gray, width: max(1.0, unit * 0.06),
-                  cut: figure.rise, gap: gap)
-        arrowHead(ctx, pFrom, pTo, color: gray, length: unit * 0.50, halfWidth: unit * 0.22)
+        // ⬆（上ル）の図だけ相手の糸と交差・ラベルを描く。操作の無い図は書籍どおり矢印のみ（ユーザー確認 2026-09-10）
+        if figure.rise {
+            crossLine(ctx, pFrom, pTo, color: gray, width: max(1.0, unit * 0.06),
+                      cut: true, gap: gap)
+            arrowHead(ctx, pFrom, pTo, color: gray, length: unit * 0.50, halfWidth: unit * 0.22)
+        }
         crossLine(ctx, from, to, color: .black, width: max(1.2, unit * 0.09),
-                  cut: !figure.rise, gap: gap)
+                  cut: false, gap: gap)
         arrowHead(ctx, from, to, color: .black, length: unit * 0.70, halfWidth: unit * 0.30)
-        // 交差の横に「上ル」／「下ル」
-        ctx.draw(Text(figure.rise ? "上ル" : "下ル")
-                    .font(.system(size: unit * 0.58)).foregroundColor(.primary),
-                 at: pt(lay.crossLabelPoint, lay))
+        if figure.rise {
+            ctx.draw(Text("上ル").font(.system(size: unit * 0.58)).foregroundColor(.primary),
+                     at: pt(lay.crossLabelPoint, lay))
+        }
         // 上／下 のラベル
         for (i, k) in lay.slotRows(count: slots.count).enumerated() {
             let over = slots[i]

@@ -983,14 +983,18 @@ function tedoriSVG(slots, second, mirrored, n, rise) {
       + `L ${bx2 - ux * hl + uy * hw} ${by2 - uy * hl - ux * hw} Z" fill="${color}"/>`;
   };
   const GRAY = "#9a948a";
-  out += xline(gx, gy, ex, ey, GRAY, U * 0.06, rise);       // 相手の糸（⬆ なら途切れる）
-  out += xhead(gx, gy, ex, ey, GRAY, U * 0.50, U * 0.22);
-  out += xline(fx, fy, tx, ty, "#1a1a1a", U * 0.09, !rise); // 動かした糸（⬆ 無しなら途切れる）
+  // ⬆（上ル）の図だけ相手の糸と交差・ラベルを描く。操作の無い図は書籍どおり矢印のみ（ユーザー確認 2026-09-10）
+  if (rise) {
+    out += xline(gx, gy, ex, ey, GRAY, U * 0.06, true);      // 相手の糸（交差で途切れる）
+    out += xhead(gx, gy, ex, ey, GRAY, U * 0.50, U * 0.22);
+  }
+  out += xline(fx, fy, tx, ty, "#1a1a1a", U * 0.09, false); // 動かした糸
   out += xhead(fx, fy, tx, ty, "#1a1a1a", U * 0.70, U * 0.30);
-  // 交差の横に「上ル」／「下ル」
-  const [lbx, lby] = P((xR + xL) / 2, ay + 1.05);
-  out += `<text x="${lbx}" y="${lby}" text-anchor="middle" dominant-baseline="middle" `
-      + `font-size="${U * 0.58}" fill="#2b2620">${rise ? "上ル" : "下ル"}</text>`;
+  if (rise) {
+    const [lbx, lby] = P((xR + xL) / 2, ay + 1.05);
+    out += `<text x="${lbx}" y="${lby}" text-anchor="middle" dominant-baseline="middle" `
+        + `font-size="${U * 0.58}" fill="#2b2620">上ル</text>`;
+  }
 
   // 上／下 のラベル（文字は鏡像にしない）
   srows.forEach((k, i) => {
