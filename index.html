@@ -181,7 +181,7 @@
         <button id="printBtn">印刷 / PDF</button>
       </div>
       <div class="hint">
-        マスをタップ / ドラッグで塗ります（「地」で消去）。<br>
+        マスをタップ / ドラッグで塗ります（「地」で消去）。同じマスをもう一度タップすると消えます。<br>
         記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
         数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。⬆（中央で上ル）は中央の色（d=0）から自動で導出されます（記号表は読み取り専用）。
       </div>
@@ -419,6 +419,9 @@ function updateCellFill(side, r, d) {
 
 /* ===== 塗り操作 ===== */
 let painting = false;
+let strokeFirst = null;   // ストロークの最初のマス（単独タップのトグル判定用）
+let strokeFirstPrev = 0; // そのマスに元々入っていた値
+let strokeMoved = false;
 let undoStack = [];
 
 function pushUndo() {
@@ -431,8 +434,12 @@ function syncArrowFromCenterColor(side, r) {
   const j = side === "L" ? 2 * r : 2 * (r - 1) + 1;
   if (j >= 0 && j < app.cells.C.length) app.cells.C[j] = (app.cells[side][r][0] || 0) > 0 ? 1 : 0;
 }
-function paintCell(side, r, d) {
-  const v = app.cur;
+/** 単独タップの塗り値: 選択色と同じ色ならもう一度押すと地（0）に戻す。「地」選択時はトグルしない */
+function toggledValue(current, selected) {
+  return (selected !== 0 && current === selected) ? 0 : selected;
+}
+function paintCell(side, r, d, value) {
+  const v = value === undefined ? app.cur : value;
   let changed = false;
   if (side === "C") {
     if (app.cells.C[r] !== v) { app.cells.C[r] = v; changed = true; }
@@ -466,17 +473,35 @@ gridSvg.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   pushUndo();
   painting = true;
+  strokeFirst = c;
+  strokeFirstPrev = c.side === "C" ? (app.cells.C[c.r] || 0) : cellValue(c.side, c.r, c.d);
+  strokeMoved = false;
   gridSvg.setPointerCapture(e.pointerId);
   paintCell(c.side, c.r, c.d);
 });
 gridSvg.addEventListener("pointermove", (e) => {
   if (!painting) return;
   const c = cellFromEvent(e);
-  if (c) paintCell(c.side, c.r, c.d);
+  if (!c) return;
+  const f = strokeFirst;
+  // 2マス目以降に入ったら通常の塗りモード（トグルしない）
+  if (f && (f.side !== c.side || f.r !== c.r || f.d !== c.d)) strokeMoved = true;
+  paintCell(c.side, c.r, c.d);
 });
-const stopPaint = () => { if (painting) { painting = false; scheduleAutosave(); } };
-gridSvg.addEventListener("pointerup", stopPaint);
-gridSvg.addEventListener("pointercancel", stopPaint);
+const stopPaint = (commit) => {
+  if (!painting) return;
+  painting = false;
+  // 1マスで終わったストローク＝単独タップ。同じ色ならもう一度押して地に戻す
+  if (commit && !strokeMoved && strokeFirst && app.cur !== 0 &&
+      toggledValue(strokeFirstPrev, app.cur) === 0) {
+    paintCell(strokeFirst.side, strokeFirst.r, strokeFirst.d, 0);
+  }
+  strokeFirst = null;
+  strokeMoved = false;
+  scheduleAutosave();
+};
+gridSvg.addEventListener("pointerup", () => stopPaint(true));
+gridSvg.addEventListener("pointercancel", () => stopPaint(false));
 
 /* ===== パレットUI ===== */
 const paletteDiv = document.getElementById("palette");

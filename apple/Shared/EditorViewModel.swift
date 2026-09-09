@@ -16,6 +16,10 @@ final class EditorViewModel: ObservableObject {
 
     private var undoStack: [CellGrid] = []
     private var strokeActive = false
+    /// ストロークの最初のマスと、そこに元々入っていた値（単独タップのトグル判定用）
+    private var strokeFirst: (side: BraidSide, r: Int, d: Int)?
+    private var strokeFirstPrev = 0
+    private var strokeMoved = false
     private var saveTask: Task<Void, Never>?
     private var dirty = false
 
@@ -68,45 +72,76 @@ final class EditorViewModel: ObservableObject {
 
     // MARK: 塗り
 
+    /// 単独タップの塗り値。選択色と同じ色のマスをもう一度押したら地（0）に戻す。
+    /// 選択色が「地」のときは従来どおり消去のみ（トグルしない）。
+    static func toggledValue(current: Int, selected: Int) -> Int {
+        (selected != 0 && current == selected) ? 0 : selected
+    }
+
     func strokeChanged(at point: CGPoint, geometry: GridGeometry) {
         guard let hit = geometry.hitTest(point) else { return }
         if !strokeActive {
             strokeActive = true
+            strokeFirst = hit
+            strokeFirstPrev = value(side: hit.side, r: hit.r, d: hit.d)
+            strokeMoved = false
             pushUndo()
+        } else if let f = strokeFirst, f.side != hit.side || f.r != hit.r || f.d != hit.d {
+            // 2マス目以降に入ったら通常の塗りモード（トグルしない）
+            strokeMoved = true
         }
-        paint(side: hit.side, r: hit.r, d: hit.d)
+        paint(side: hit.side, r: hit.r, d: hit.d, value: currentColor)
     }
 
     func strokeEnded() {
         guard strokeActive else { return }
         strokeActive = false
+        // 1マスで終わったストローク＝単独タップ。同じ色なら地に戻す
+        if !strokeMoved, let f = strokeFirst,
+           Self.toggledValue(current: strokeFirstPrev, selected: currentColor) == 0,
+           currentColor != 0 {
+            paint(side: f.side, r: f.r, d: f.d, value: 0)
+        }
+        strokeFirst = nil
+        strokeMoved = false
         scheduleSave()
     }
 
     func tap(at point: CGPoint, geometry: GridGeometry) {
         guard let hit = geometry.hitTest(point) else { return }
         pushUndo()
-        paint(side: hit.side, r: hit.r, d: hit.d)
+        let v = Self.toggledValue(current: value(side: hit.side, r: hit.r, d: hit.d),
+                                  selected: currentColor)
+        paint(side: hit.side, r: hit.r, d: hit.d, value: v)
         scheduleSave()
     }
 
-    private func paint(side: BraidSide, r: Int, d: Int) {
+    private func value(side: BraidSide, r: Int, d: Int) -> Int {
+        if side == .center {
+            guard r >= 0, r < rowCount * 2 else { return 0 }
+            return cells.value(side: .center, r: r, d: 0)
+        }
+        guard r >= 0, r < rowCount, d >= 0, d < cols else { return 0 }
+        return cells.value(side: side, r: r, d: d)
+    }
+
+    private func paint(side: BraidSide, r: Int, d: Int, value v: Int) {
         if side == .center {
             // 中央の上ル目（r は通し番号 0..2*rows-1）。塗るとその段に ⬆ が付く
             guard r >= 0, r < rowCount * 2 else { return }
-            if cells.value(side: .center, r: r, d: 0) != currentColor {
-                cells.set(side: .center, r: r, d: 0, to: currentColor)
+            if cells.value(side: .center, r: r, d: 0) != v {
+                cells.set(side: .center, r: r, d: 0, to: v)
             }
             return
         }
         guard r >= 0, r < rowCount else { return }
         guard d >= 0, d < cols else { return }
-        if cells.value(side: side, r: r, d: d) != currentColor {
-            cells.set(side: side, r: r, d: d, to: currentColor)
+        if cells.value(side: side, r: r, d: d) != v {
+            cells.set(side: side, r: r, d: d, to: v)
             if d == 0 { cells.syncArrowFromCenterColor(side: side, row: r) }
         }
-        if symmetric, cells.value(side: side.opposite, r: r, d: d) != currentColor {
-            cells.set(side: side.opposite, r: r, d: d, to: currentColor)
+        if symmetric, cells.value(side: side.opposite, r: r, d: d) != v {
+            cells.set(side: side.opposite, r: r, d: d, to: v)
             if d == 0 { cells.syncArrowFromCenterColor(side: side.opposite, row: r) }
         }
     }
