@@ -747,6 +747,8 @@ function sideSymbols(side) {
       plain: [...exchNums].sort((a, b) => a - b),
       circled: [...sched[r]].sort((a, b) => a - b),
       aya, text: nums + aya,
+      // ⬆（中央で上ル）が付く段か。手取り図の交差の描き分けに使う（記号文字列には影響しない）
+      rise: hasArrow,
     });
     if (!isBridge) prev = slots;
   }
@@ -849,7 +851,7 @@ function tdSmooth(pts) {
   return d;
 }
 // 手取り図 1 枚（SVG 文字列）。slots は上から順（true=上）
-function tedoriSVG(slots, second, mirrored, n) {
+function tedoriSVG(slots, second, mirrored, n, rise) {
   const rows = n + 1, U = TD_UNIT;
   const y = k => 1.35 + (k - 1);
   const H = rows + 3.0;
@@ -896,17 +898,47 @@ function tedoriSVG(slots, second, mirrored, n) {
       pts.push(P(TD.xGap, y(k)));            // 素通り
     }
   }
-  // 最後の段を素通りしてから左に曲がる
-  pts.push(P(TD.xGap, y(rows) + 0.80), P(TD.xGap - 0.55, y(rows) + 1.20));
+  // 最後の段を素通りしてから左に曲がる（下端の交差へ入る）
+  const ay = y(rows) + 1.20, cdy = 0.40;   // 交差の中心の y ／ 交差の傾き
+  pts.push(P(TD.xGap, y(rows) + 0.60), P(TD.xGap - 0.55, ay - cdy));
   out += `<path d="${tdSmooth(pts)}" fill="none" stroke="#1a1a1a" stroke-width="${U * 0.11}" `
       + `stroke-linecap="round" stroke-linejoin="round"/>`;
 
-  // 矢印（左の対へ糸を渡す）
-  const ay = y(rows) + 1.20;
-  const [fx, fy] = P(TD.xGap - 0.55, ay), [tx, ty] = P(TD.xB - 0.55, ay);
-  const dir = mirrored ? 1 : -1, hw = U * 0.30, hl = U * 0.70;
-  out += `<line x1="${fx}" y1="${fy}" x2="${tx}" y2="${ty}" stroke="#1a1a1a" stroke-width="${U * 0.09}" stroke-linecap="round"/>`;
-  out += `<path d="M ${tx} ${ty} L ${tx - dir * hl} ${ty - hw} L ${tx - dir * hl} ${ty + hw} Z" fill="#1a1a1a"/>`;
+  // 下端の交差: 動かした糸（黒・反対の対へ渡る）と、反対の対から渡ってくる相手の糸（灰・逆向き）。
+  // ⬆ の段は動かした糸が相手の上を通る（上ル）＝相手の線を交差で途切れさせる。
+  // ⬆ の無い段は下を通る（下ル）＝動かした糸を交差で途切れさせる（ユーザー確認 2026-09-09）
+  const xR = TD.xGap - 0.55, xL = TD.xB - 0.55;   // 交差の右端・左端（鏡像前）
+  const [fx, fy] = P(xR, ay - cdy), [tx, ty] = P(xL, ay + cdy);   // 動かした糸
+  const [gx, gy] = P(xL, ay - cdy), [ex, ey] = P(xR, ay + cdy);   // 相手の糸
+  const gap = U * 0.30;
+  // 交差で途切れさせながら線を引く（cut=true で中央に隙間を空ける）
+  const xline = (ax, ay2, bx2, by2, color, w, cut) => {
+    if (!cut) return `<line x1="${ax}" y1="${ay2}" x2="${bx2}" y2="${by2}" stroke="${color}" `
+      + `stroke-width="${w}" stroke-linecap="round"/>`;
+    const mx2 = (ax + bx2) / 2, my2 = (ay2 + by2) / 2;
+    const vx = bx2 - ax, vy = by2 - ay2, len = Math.max(0.001, Math.hypot(vx, vy));
+    const ux = vx / len, uy = vy / len;
+    return `<line x1="${ax}" y1="${ay2}" x2="${mx2 - ux * gap}" y2="${my2 - uy * gap}" stroke="${color}" `
+      + `stroke-width="${w}" stroke-linecap="round"/>`
+      + `<line x1="${mx2 + ux * gap}" y1="${my2 + uy * gap}" x2="${bx2}" y2="${by2}" stroke="${color}" `
+      + `stroke-width="${w}" stroke-linecap="round"/>`;
+  };
+  // 矢じり（終点 b、向きは a→b）
+  const xhead = (ax, ay2, bx2, by2, color, hl, hw) => {
+    const vx = bx2 - ax, vy = by2 - ay2, len = Math.max(0.001, Math.hypot(vx, vy));
+    const ux = vx / len, uy = vy / len;
+    return `<path d="M ${bx2} ${by2} L ${bx2 - ux * hl - uy * hw} ${by2 - uy * hl + ux * hw} `
+      + `L ${bx2 - ux * hl + uy * hw} ${by2 - uy * hl - ux * hw} Z" fill="${color}"/>`;
+  };
+  const GRAY = "#9a948a";
+  out += xline(gx, gy, ex, ey, GRAY, U * 0.06, rise);       // 相手の糸（⬆ なら途切れる）
+  out += xhead(gx, gy, ex, ey, GRAY, U * 0.50, U * 0.22);
+  out += xline(fx, fy, tx, ty, "#1a1a1a", U * 0.09, !rise); // 動かした糸（⬆ 無しなら途切れる）
+  out += xhead(fx, fy, tx, ty, "#1a1a1a", U * 0.70, U * 0.30);
+  // 交差の横に「上ル」／「下ル」
+  const [lbx, lby] = P((xR + xL) / 2, ay + 1.05);
+  out += `<text x="${lbx}" y="${lby}" text-anchor="middle" dominant-baseline="middle" `
+      + `font-size="${U * 0.58}" fill="#2b2620">${rise ? "上ル" : "下ル"}</text>`;
 
   // 上／下 のラベル（文字は鏡像にしない）
   srows.forEach((k, i) => {
@@ -981,7 +1013,7 @@ function tdHalfHTML(title, side, r, mirrored, sym, n) {
   for (const second of [false, true]) {
     const fig = (mirrored ? 3 : 1) + (second ? 1 : 0);
     h += `<div class="tdFig"><span>図${fig}</span>`
-       + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n) + `</div>`;
+       + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n, !!sym.rise) + `</div>`;
   }
   const marks = tdMarks(sym);
   if (marks.length) {

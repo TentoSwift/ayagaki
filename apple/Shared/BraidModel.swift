@@ -143,6 +143,9 @@ struct RowSymbol: Equatable {
     var circled: [Int] = []    // 戻しの番号（昇順）
     var aya: String = ""       // 綾名（⬆ 込み）
     var text: String = ""      // 記号文字列
+    /// ⬆（中央で上ル）が付く段か。手取り図の交差の描き分け（上ル／下ル）に使う。
+    /// 記号文字列の生成には一切影響しない
+    var rise: Bool = false
 }
 
 struct NotationGroup: Identifiable, Equatable {
@@ -434,7 +437,7 @@ enum Notation {
             let nums = numberList(circled: sched[r], plain: exchNums,
                                   beforeNami: aya.hasPrefix("ナミ"))
             texts.append(RowSymbol(plain: exchNums.sorted(), circled: sched[r].sorted(),
-                                   aya: aya, text: nums + aya))
+                                   aya: aya, text: nums + aya, rise: arrows?[r] == true))
             if !isBridge { prevSlots = slots }
         }
         return texts

@@ -13,6 +13,8 @@ struct TedoriFigure: Equatable {
     var mirrored: Bool
     /// 片腕の糸数 N（60玉=15、68玉=17…）
     var threads: Int
+    /// ⬆（中央で上ル）が付く段か。下端の交差で渡る糸が相手の上を通る（上ル）／下を通る（下ル）
+    var rise: Bool = false
 
     /// 書籍の図番号（右半面=1,2／左半面=3,4）
     var index: Int { (mirrored ? 3 : 1) + (second ? 1 : 0) }
@@ -101,16 +103,28 @@ struct TedoriLayout {
                 pts.append(CGPoint(x: xGap, y: y(k)))   // 素通り
             }
         }
-        // 最後の段を素通りしてから左に曲がる
-        pts.append(CGPoint(x: xGap, y: y(rows) + 0.80))
-        pts.append(CGPoint(x: xGap - 0.55, y: y(rows) + 1.20))
+        // 最後の段を素通りしてから左に曲がる（下端の交差へ入る）
+        pts.append(CGPoint(x: xGap, y: y(rows) + 0.60))
+        pts.append(CGPoint(x: xGap - 0.55, y: crossY - crossDY))
         return pts
     }
 
-    /// 矢印（左の対へ糸を渡す）の始点と先端
+    /// 下端の交差の中心の y と傾き
+    var crossY: CGFloat { y(rows) + 1.20 }
+    var crossDY: CGFloat { 0.40 }
+    /// 動かした糸が反対の対へ渡る線（右上 → 左下）
     var arrow: (from: CGPoint, to: CGPoint) {
-        let yy = y(rows) + 1.20
-        return (CGPoint(x: xGap - 0.55, y: yy), CGPoint(x: xB - 0.55, y: yy))
+        (CGPoint(x: xGap - 0.55, y: crossY - crossDY),
+         CGPoint(x: xB - 0.55, y: crossY + crossDY))
+    }
+    /// 反対の対から渡ってくる相手の糸（左上 → 右下。動かした糸と中央で交差する）
+    var partnerArrow: (from: CGPoint, to: CGPoint) {
+        (CGPoint(x: xB - 0.55, y: crossY - crossDY),
+         CGPoint(x: xGap - 0.55, y: crossY + crossDY))
+    }
+    /// 「上ル」／「下ル」のラベル位置（交差の下）
+    var crossLabelPoint: CGPoint {
+        CGPoint(x: ((xGap - 0.55) + (xB - 0.55)) / 2, y: crossY + 1.05)
     }
 
     /// 上／下 のラベル位置
@@ -175,26 +189,67 @@ struct TedoriCanvas: View {
         let pts = lay.wavePoints(slots: slots).map { pt($0, lay) }
         ctx.stroke(Self.smoothPath(pts), with: .color(.black),
                    style: StrokeStyle(lineWidth: max(1.4, unit * 0.11), lineCap: .round, lineJoin: .round))
-        // 矢印
-        let a = lay.arrow
+        // 下端の交差: 動かした糸（黒・反対の対へ渡る）と、反対の対から渡ってくる相手の糸（灰・逆向き）。
+        // ⬆ の段は動かした糸が相手の上を通る（上ル）＝相手の線を交差で途切れさせる。
+        // ⬆ の無い段は下を通る（下ル）＝動かした糸を交差で途切れさせる（ユーザー確認 2026-09-09）
+        let a = lay.arrow, p = lay.partnerArrow
         let from = pt(a.from, lay), to = pt(a.to, lay)
-        var line = Path(); line.move(to: from); line.addLine(to: to)
-        ctx.stroke(line, with: .color(.black),
-                   style: StrokeStyle(lineWidth: max(1.2, unit * 0.09), lineCap: .round))
-        let dir: CGFloat = figure.mirrored ? 1 : -1   // 鏡像では右向き
-        let hw = unit * 0.30, hl = unit * 0.70
-        var head = Path()
-        head.move(to: to)
-        head.addLine(to: CGPoint(x: to.x - dir * hl, y: to.y - hw))
-        head.addLine(to: CGPoint(x: to.x - dir * hl, y: to.y + hw))
-        head.closeSubpath()
-        ctx.fill(head, with: .color(.black))
+        let pFrom = pt(p.from, lay), pTo = pt(p.to, lay)
+        let gap = unit * 0.30
+        let gray = Color(white: 0.60)
+        crossLine(ctx, pFrom, pTo, color: gray, width: max(1.0, unit * 0.06),
+                  cut: figure.rise, gap: gap)
+        arrowHead(ctx, pFrom, pTo, color: gray, length: unit * 0.50, halfWidth: unit * 0.22)
+        crossLine(ctx, from, to, color: .black, width: max(1.2, unit * 0.09),
+                  cut: !figure.rise, gap: gap)
+        arrowHead(ctx, from, to, color: .black, length: unit * 0.70, halfWidth: unit * 0.30)
+        // 交差の横に「上ル」／「下ル」
+        ctx.draw(Text(figure.rise ? "上ル" : "下ル")
+                    .font(.system(size: unit * 0.58)).foregroundColor(.primary),
+                 at: pt(lay.crossLabelPoint, lay))
         // 上／下 のラベル
         for (i, k) in lay.slotRows(count: slots.count).enumerated() {
             let over = slots[i]
             let p = pt(lay.labelPoint(row: k, over: over), lay)
             ctx.draw(Text(over ? "上" : "下").font(.system(size: unit * 0.72)).foregroundColor(.primary), at: p)
         }
+    }
+
+    /// 交差で途切れさせながら線を引く（cut=true で中央に隙間を空ける）
+    private func crossLine(_ ctx: GraphicsContext, _ a: CGPoint, _ b: CGPoint,
+                           color: Color, width: CGFloat, cut: Bool, gap: CGFloat) {
+        let style = StrokeStyle(lineWidth: width, lineCap: .round)
+        var path = Path()
+        if cut {
+            let m = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
+            let vx = b.x - a.x, vy = b.y - a.y
+            let len = max(0.001, sqrt(vx * vx + vy * vy))
+            let ux = vx / len, uy = vy / len
+            path.move(to: a)
+            path.addLine(to: CGPoint(x: m.x - ux * gap, y: m.y - uy * gap))
+            path.move(to: CGPoint(x: m.x + ux * gap, y: m.y + uy * gap))
+            path.addLine(to: b)
+        } else {
+            path.move(to: a)
+            path.addLine(to: b)
+        }
+        ctx.stroke(path, with: .color(color), style: style)
+    }
+
+    /// 矢じり（終点 b、向きは a→b）
+    private func arrowHead(_ ctx: GraphicsContext, _ a: CGPoint, _ b: CGPoint,
+                           color: Color, length: CGFloat, halfWidth: CGFloat) {
+        let vx = b.x - a.x, vy = b.y - a.y
+        let len = max(0.001, sqrt(vx * vx + vy * vy))
+        let ux = vx / len, uy = vy / len
+        var head = Path()
+        head.move(to: b)
+        head.addLine(to: CGPoint(x: b.x - ux * length - uy * halfWidth,
+                                 y: b.y - uy * length + ux * halfWidth))
+        head.addLine(to: CGPoint(x: b.x - ux * length + uy * halfWidth,
+                                 y: b.y - uy * length - ux * halfWidth))
+        head.closeSubpath()
+        ctx.fill(head, with: .color(color))
     }
 
     /// 通過点を Catmull-Rom で滑らかに繋ぐ
@@ -307,7 +362,8 @@ struct TedoriHalfView: View {
                         VStack(spacing: 2) {
                             let fig = TedoriFigure(
                                 slots: Notation.tedoriSlots(rowCells: cells, second: second),
-                                second: second, mirrored: mirrored, threads: threads)
+                                second: second, mirrored: mirrored, threads: threads,
+                                rise: symbol.rise)
                             Text("図\(fig.index)").font(.caption2).foregroundColor(.secondary)
                             TedoriCanvas(figure: fig, unit: unit)
                         }
