@@ -135,11 +135,24 @@ struct DesignSnapshot: Codable {
 
 // MARK: - 交換記号の生成
 
+/// 1段ぶんの記号の材料（構造化データ）。記号文字列を再パースせずに
+/// 「糸交換の番号（通常数字）」「戻しの番号（丸数字）」を取り出すために使う。
+/// text は従来どおりの記号文字列（出力は変えない）
+struct RowSymbol: Equatable {
+    var plain: [Int] = []      // 糸交換の番号（昇順）
+    var circled: [Int] = []    // 戻しの番号（昇順）
+    var aya: String = ""       // 綾名（⬆ 込み）
+    var text: String = ""      // 記号文字列
+}
+
 struct NotationGroup: Identifiable, Equatable {
     var from: Int
     var to: Int
     var left: String
     var right: String
+    /// 手取り図などで使う構造化データ（グループの先頭段のもの）
+    var leftSymbol: RowSymbol = RowSymbol()
+    var rightSymbol: RowSymbol = RowSymbol()
 
     var id: Int { from }
     var label: String { from == to ? "\(from + 1)" : "\(from + 1)〜\(to + 1)" }
@@ -157,6 +170,9 @@ enum Notation {
         }
         return "(\(n))"
     }
+
+    /// 丸数字の文字（手取り図の糸交換の印などから使う）
+    static func circledText(_ n: Int) -> String { circled(n) }
 
     /// 綾の読みで使う「入れかえの目」＝1目おき（偶数目盛り d=1,3,5,…、60玉=6目／68玉=7目）。
     /// 偶数列（縦に進む列）は綾名には入れない（糸交換のみ）
@@ -242,8 +258,16 @@ enum Notation {
     /// ・±1目の漸進変化は綾の手取りだけで賄うため数字なし
     static func sideTexts(_ plane: [[Int]], arrows: [Bool]? = nil,
                           centerRise: [Bool]? = nil, oppositeRise: [Bool]? = nil) -> [String] {
+        sideSymbols(plane, arrows: arrows, centerRise: centerRise, oppositeRise: oppositeRise)
+            .map { $0.text }
+    }
+
+    /// sideTexts と同じ計算で、記号文字列に加えて糸交換／戻しの番号も返す（手取り図が使う）。
+    /// 記号文字列（RowSymbol.text）の内容は sideTexts と完全に同一
+    static func sideSymbols(_ plane: [[Int]], arrows: [Bool]? = nil,
+                            centerRise: [Bool]? = nil, oppositeRise: [Bool]? = nil) -> [RowSymbol] {
         let rows = plane.count
-        var texts: [String] = []
+        var texts: [RowSymbol] = []
         var opRun = 0          // 連続する入れかえ段数（中央で上がる段も含む）
         var prevSlots: [Bool]?
         var blockPairs = Set<Int>()  // ブロック内の飛びの糸交換で戻す番号（交換番号+2）
@@ -409,7 +433,8 @@ enum Notation {
             // 糸交換と戻しは1つの数列にまとめて前置（数値順。手書きの綾書の書式）
             let nums = numberList(circled: sched[r], plain: exchNums,
                                   beforeNami: aya.hasPrefix("ナミ"))
-            texts.append(nums + aya)
+            texts.append(RowSymbol(plain: exchNums.sorted(), circled: sched[r].sorted(),
+                                   aya: aya, text: nums + aya))
             if !isBridge { prevSlots = slots }
         }
         return texts
@@ -424,10 +449,26 @@ enum Notation {
         // 記号の法則は左右同一（⬆の表示位置だけ左が1段前 = C の自動書き込みで対応）
         let riseL = (0..<rows).map { cells.R[$0].first ?? 0 > 0 }
         let riseR = (0..<rows).map { cells.L[$0].first ?? 0 > 0 }
-        let lefts = sideTexts(cells.L, arrows: arrowsL, centerRise: riseL, oppositeRise: riseR)
-        let rights = sideTexts(cells.R, arrows: arrowsR, centerRise: riseR, oppositeRise: riseL)
+        let lefts = sideSymbols(cells.L, arrows: arrowsL, centerRise: riseL, oppositeRise: riseR)
+        let rights = sideSymbols(cells.R, arrows: arrowsR, centerRise: riseR, oppositeRise: riseL)
         return (0..<lefts.count).map {
-            NotationGroup(from: $0, to: $0, left: lefts[$0], right: rights[$0])
+            NotationGroup(from: $0, to: $0, left: lefts[$0].text, right: rights[$0].text,
+                          leftSymbol: lefts[$0], rightSymbol: rights[$0])
         }
+    }
+
+    /// 手取り図の全段表示用。同じ記号（かつ同じ塗り）が続く段をまとめる（label は「3」「4〜6」）
+    static func tedoriGroups(cells: CellGrid) -> [NotationGroup] {
+        var out: [NotationGroup] = []
+        for g in groups(cells: cells) {
+            if var last = out.last, last.left == g.left, last.right == g.right,
+               cells.L[last.from] == cells.L[g.from], cells.R[last.from] == cells.R[g.from] {
+                last.to = g.to
+                out[out.count - 1] = last
+            } else {
+                out.append(g)
+            }
+        }
+        return out
     }
 }

@@ -12,6 +12,7 @@ struct EditorView: View {
     @State private var showSettings = false
     @State private var showClearConfirm = false
     @State private var compactTab = 0               // 0=記号, 1=手取り図, 2=プレビュー
+    @State private var notationTab = 0              // 0=記号表, 1=手取り図（全段）
 
     @State private var exportingJSON = false
     @State private var importingJSON = false
@@ -82,8 +83,18 @@ struct EditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("交換記号").font(.headline)
-                    NotationView(vm: vm)
-                    TedoriPanel(vm: vm).padding(.top, 8)
+                    Picker("", selection: $notationTab) {
+                        Text("記号表").tag(0)
+                        Text("手取り図").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    // 記号表モード＝表＋選んだ段の手取り図、手取り図モード＝全段の手取り図
+                    if notationTab == 0 {
+                        NotationView(vm: vm)
+                        TedoriPanel(vm: vm).padding(.top, 8)
+                    } else {
+                        TedoriListView(vm: vm, unit: 15)
+                    }
                     Text("仕上がりプレビュー（2リピート）").font(.headline).padding(.top, 8)
                     HStack { Spacer(); PreviewCanvasView(vm: vm); Spacer() }
                     legend
@@ -112,7 +123,7 @@ struct EditorView: View {
                 if compactTab == 0 {
                     ScrollView { NotationView(vm: vm).padding(.horizontal, 8) }
                 } else if compactTab == 1 {
-                    ScrollView { TedoriPanel(vm: vm, unit: 15).padding(8) }
+                    ScrollView { TedoriListView(vm: vm, unit: 14).padding(8) }
                 } else {
                     ScrollView([.horizontal, .vertical]) { PreviewCanvasView(vm: vm).padding(8) }
                 }

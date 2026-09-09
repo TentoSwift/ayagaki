@@ -22,6 +22,8 @@ final class EditorViewModel: ObservableObject {
     var cols: Int { BraidSpec.cols(forTama: tama) }
     var canUndo: Bool { !undoStack.isEmpty }
     var notationGroups: [NotationGroup] { Notation.groups(cells: cells) }
+    /// 手取り図の全段表示用（同じ記号が続く段はまとめる）
+    var tedoriGroups: [NotationGroup] { Notation.tedoriGroups(cells: cells) }
 
     private var externalChangeObserver: NSObjectProtocol?
 

@@ -84,7 +84,16 @@
 
   .previewWrap { overflow: auto; max-height: 340px; text-align: center; }
 
+  .segRow { display: flex; gap: 6px; margin-bottom: 8px; }
+  .segRow button.seg {
+    font-size: 12px; padding: 4px 12px; border: 1px solid var(--border);
+    border-radius: 999px; background: #fff; cursor: pointer; color: #6b6350;
+  }
+  .segRow button.seg.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
   .tedori { overflow: auto; }
+  .tedori .tdGroup { padding: 6px 4px; border-bottom: 1px solid #eee6d5; cursor: pointer; }
+  .tedori .tdGroup.selRow { background: #fdeaea; }
   .tedori .tdTitle { font-size: 12px; font-weight: 600; color: var(--accent); margin: 8px 0 2px; }
   .tedori .tdRow { display: flex; gap: 14px; align-items: flex-start; }
   .tedori .tdFig { text-align: center; }
@@ -169,10 +178,15 @@
 
     <div class="card">
       <h2>交換記号（自動生成）</h2>
+      <div class="segRow">
+        <button class="seg on" id="modeTableBtn">記号表</button>
+        <button class="seg" id="modeTedoriBtn">手取り図</button>
+      </div>
       <div class="notation" id="notation"></div>
+      <div id="tedoriAll" class="tedori" style="display: none"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="tedoriCard">
       <h2>手取り図（書籍 4-4〜4-9）</h2>
       <div id="tedori" class="tedori"></div>
     </div>
@@ -551,7 +565,10 @@ function ayaName(slots) {
   }
   return runs.map(x => (x.f ? "上" : "下") + x.n).join("");
 }
-function sideTexts(side) {
+function sideTexts(side) { return sideSymbols(side).map(x => x.text); }
+// sideTexts と同じ計算で、記号文字列に加えて糸交換／戻しの番号も返す（手取り図が使う）。
+// text の内容は従来の記号文字列と完全に同一
+function sideSymbols(side) {
   const N = cols();
   const texts = [];
   const opp = side === "R" ? "L" : "R";
@@ -725,21 +742,41 @@ function sideTexts(side) {
     }
     if (hasArrow) aya += "⬆";
     // 糸交換と戻しは1つの数列にまとめて前置（数値順。手書きの綾書の書式）
-    texts.push(numberList(sched[r], exchNums, aya.startsWith("ナミ")) + aya);
+    const nums = numberList(sched[r], exchNums, aya.startsWith("ナミ"));
+    texts.push({
+      plain: [...exchNums].sort((a, b) => a - b),
+      circled: [...sched[r]].sort((a, b) => a - b),
+      aya, text: nums + aya,
+    });
     if (!isBridge) prev = slots;
   }
   return texts;
 }
 
 const notationDiv = document.getElementById("notation");
+// 全段の記号（構造化データ付き）。段は省略せず1段ずつ
+function notationRows() {
+  const lefts = sideSymbols("L"), rights = sideSymbols("R");
+  const out = [];
+  for (let r = 0; r < app.rows; r++) out.push({ from: r, to: r, L: lefts[r], R: rights[r] });
+  return out;
+}
+// 手取り図の全段表示用。同じ記号（かつ同じ塗り）が続く段はまとめる（「3」「4〜6」）
+function tedoriGroupsList() {
+  const same = (a, b) => a.length === b.length && a.every((v, i) => (v > 0) === (b[i] > 0));
+  const out = [];
+  for (const g of notationRows()) {
+    const last = out[out.length - 1];
+    if (last && last.L.text === g.L.text && last.R.text === g.R.text
+        && same(app.cells.L[last.from], app.cells.L[g.from])
+        && same(app.cells.R[last.from], app.cells.R[g.from])) {
+      last.to = g.to;
+    } else out.push({ ...g });
+  }
+  return out;
+}
 function renderNotation() {
-  const lefts = sideTexts("L");
-  const rights = sideTexts("R");
-  const rows = [];
-  for (let r = 0; r < app.rows; r++) rows.push({ L: lefts[r], R: rights[r] });
-
-  // 段は省略せず1段ずつ表示する
-  const groups = rows.map((row, r) => ({ from: r, to: r, L: row.L, R: row.R }));
+  const groups = notationRows();
 
   const tbl = document.createElement("table");
   tbl.className = "nota";
@@ -747,11 +784,11 @@ function renderNotation() {
   for (const gp of groups) {
     const tr = document.createElement("tr");
     const seg = gp.from === gp.to ? `${gp.from + 1}` : `${gp.from + 1}〜${gp.to + 1}`;
-    tr.innerHTML = `<td class="seg">${seg}</td><td>${gp.L}</td><td>${gp.R}</td>`;
+    tr.innerHTML = `<td class="seg">${seg}</td><td>${gp.L.text}</td><td>${gp.R.text}</td>`;
     tr.dataset.row = gp.from;
     if (tedoriRow === gp.from) tr.classList.add("selRow");
     tr.addEventListener("mouseenter", () => highlightRows(gp.from, gp.to, true));
-    tr.addEventListener("mouseleave", () => highlightRows(gp.from, gp.to, false));
+    tr.addEventListener("mouseleave", () => { highlightRows(gp.from, gp.to, false); applyHi(); });
     // 段をクリックすると手取り図がその段に切り替わる（記号表自体は読み取り専用）
     tr.addEventListener("click", () => selectTedoriRow(gp.from));
     tbl.appendChild(tr);
@@ -760,6 +797,11 @@ function renderNotation() {
   notationDiv.appendChild(tbl);
 }
 
+// 選んだ段のハイライトを塗り直す（ホバーを外しても選択は残す）
+function applyHi() {
+  for (const k in cellIndex) cellIndex[k].classList.remove("rowHi");
+  if (hiRange) highlightRows(hiRange[0], hiRange[1], true);
+}
 function highlightRows(from, to, on) {
   const N = cols();
   for (let r = from; r <= to; r++)
@@ -878,33 +920,144 @@ function tedoriSVG(slots, second, mirrored, n) {
   return `<svg viewBox="0 0 ${W} ${HH}" width="${W}" height="${HH}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
 }
 
+// 糸交換の図（書籍 4-8 下段 A/B）: 帯と玉だけを描き、C と D の対応する玉の間に
+// 小さな両矢印と番号を置く（線は描かない）。marks = [{number, circled}]
+function tdExchangeSVG(marks, mirrored, n) {
+  const rows = n + 1, U = TD_UNIT;
+  const y = k => 1.35 + (k - 1);
+  const H = rows + 3.0;
+  const mx = x => mirrored ? TD.width - x : x;
+  const bandTop = y(1) - 0.60, bandBottom = H - 0.15, countY = y(1) - 1.00;
+  let out = "";
+  // 帯・糸数・玉（図1 と同じ配置）
+  for (const [bx, first, last, filled] of tdBands(n, false)) {
+    const cx = mx(bx) * U;
+    out += `<rect x="${cx - TD.bandHW * U}" y="${bandTop * U}" width="${TD.bandHW * 2 * U}" `
+        + `height="${(bandBottom - bandTop) * U}" rx="2" fill="#c9c4bb"/>`;
+    out += `<text x="${cx}" y="${countY * U}" text-anchor="middle" dominant-baseline="middle" `
+        + `font-size="${U * 0.62}" fill="#2b2620">${last - first + 1}</text>`;
+    for (let k = first; k <= last; k++) {
+      const py = y(k) * U;
+      out += filled
+        ? `<circle cx="${cx}" cy="${py}" r="${TD.dotR * U}" fill="#1a1a1a"/>`
+        : `<circle cx="${cx}" cy="${py}" r="${TD.dotR * U}" fill="#fbfaf7" stroke="#1a1a1a" stroke-width="${U * 0.045}"/>`;
+    }
+  }
+  // 弧＋終点の矢じり
+  const arc = (ax, ay, bx2, by, bow) => {
+    const cx = (ax + bx2) / 2, cy = ay + bow;
+    let o = `<path d="M ${ax} ${ay} Q ${cx} ${cy} ${bx2} ${by}" fill="none" stroke="#1a1a1a" `
+          + `stroke-width="${U * 0.075}" stroke-linecap="round"/>`;
+    const vx = bx2 - cx, vy = by - cy, len = Math.max(0.001, Math.hypot(vx, vy));
+    const ux = vx / len, uy = vy / len, hl = U * 0.34, hw = U * 0.17;
+    o += `<path d="M ${bx2} ${by} L ${bx2 - ux * hl - uy * hw} ${by - uy * hl + ux * hw} `
+      + `L ${bx2 - ux * hl + uy * hw} ${by - uy * hl - ux * hw} Z" fill="#1a1a1a"/>`;
+    return o;
+  };
+  for (const m of marks) {
+    // 手前（下）から数えた位置。一番下=1
+    const num = Math.min(Math.max(m.number, 1), n);
+    const yk = y(rows + 1 - num) * U;
+    const xc = mx(TD.xC) * U, xd = mx(TD.xD) * U;
+    const inset = TD.dotR * 0.45 * U, dir = xd > xc ? 1 : -1;
+    const ax = xc + dir * inset, bx2 = xd - dir * inset, bow = 0.38 * U;
+    out += arc(ax, yk, bx2, yk, -bow) + arc(bx2, yk, ax, yk, bow);
+    out += `<text x="${mx(TD.xD + 0.95) * U}" y="${yk}" text-anchor="middle" `
+        + `dominant-baseline="middle" font-size="${U * 0.62}" fill="#2b2620">`
+        + `${m.circled ? circled(num) : num}</text>`;
+  }
+  const W = TD.width * U, HH = H * U;
+  return `<svg viewBox="0 0 ${W} ${HH}" width="${W}" height="${HH}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
+}
+// 記号の構造化データ → 糸交換の印（数字＝糸交換、丸数字＝戻し）
+function tdMarks(sym) {
+  return [...sym.plain.map(n => ({ number: n, circled: false })),
+          ...sym.circled.map(n => ({ number: n, circled: true }))]
+    .sort((a, b) => a.number - b.number);
+}
+// 半面ぶん（図1・図2、または図3・図4）＋ 糸交換の印の図
+function tdHalfHTML(title, side, r, mirrored, sym, n) {
+  let h = `<div class="tdTitle">${title}</div><div class="tdRow">`;
+  for (const second of [false, true]) {
+    const fig = (mirrored ? 3 : 1) + (second ? 1 : 0);
+    h += `<div class="tdFig"><span>図${fig}</span>`
+       + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n) + `</div>`;
+  }
+  const marks = tdMarks(sym);
+  if (marks.length) {
+    h += `<div class="tdFig"><span>糸交換</span>${tdExchangeSVG(marks, mirrored, n)}</div>`;
+  }
+  return h + `</div>`;
+}
+
 const tedoriDiv = document.getElementById("tedori");
+const tedoriAllDiv = document.getElementById("tedoriAll");
+const tedoriCard = document.getElementById("tedoriCard");
 let tedoriRow = null;      // 記号表で選んだ段
+let notationMode = 0;      // 0=記号表（＋選んだ段の手取り図）, 1=手取り図（全段）
+let hiRange = null;        // グリッド上でハイライトし続ける段の範囲
+
 function renderTedori() {
+  const n = app.tama / 4;   // N = 片腕の糸数（60玉=15）
+  // 表示の切り替え（二重表示にしない）
+  notationDiv.style.display = notationMode === 0 ? "" : "none";
+  tedoriAllDiv.style.display = notationMode === 1 ? "" : "none";
+  tedoriCard.style.display = notationMode === 0 ? "" : "none";
+  document.getElementById("modeTableBtn").classList.toggle("on", notationMode === 0);
+  document.getElementById("modeTedoriBtn").classList.toggle("on", notationMode === 1);
+
+  if (notationMode === 1) {
+    // 全段を上から順に、手順書のように並べる
+    const groups = tedoriGroupsList();
+    let html = "";
+    for (const g of groups) {
+      const label = g.from === g.to ? `${g.from + 1}` : `${g.from + 1}〜${g.to + 1}`;
+      const sel = hiRange && hiRange[0] === g.from && hiRange[1] === g.to ? " selRow" : "";
+      html += `<div class="tdGroup${sel}" data-from="${g.from}" data-to="${g.to}">`
+           + tdHalfHTML(`${label}段 右半面 ${g.R.text}`, "R", g.from, false, g.R, n)
+           + tdHalfHTML(`${label}段 左半面 ${g.L.text}`, "L", g.from, true, g.L, n)
+           + `</div>`;
+    }
+    tedoriAllDiv.innerHTML = html;
+    // 図をクリックするとその段がグリッド上でハイライトされる
+    for (const el of tedoriAllDiv.querySelectorAll(".tdGroup")) {
+      el.addEventListener("click", () => {
+        const from = Number(el.dataset.from), to = Number(el.dataset.to);
+        setHiRange(hiRange && hiRange[0] === from && hiRange[1] === to ? null : [from, to]);
+      });
+    }
+    return;
+  }
+
   if (tedoriRow === null || tedoriRow >= app.rows) {
     tedoriDiv.innerHTML = `<div class="tdEmpty">交換記号の段をクリックすると、その段の手取り図を表示します。</div>`;
     return;
   }
-  const r = tedoriRow, n = app.tama / 4;   // N = 片腕の糸数（60玉=15）
-  const L = sideTexts("L")[r], R = sideTexts("R")[r];
-  let html = "";
-  for (const [side, name, mirrored, sym] of [["R", "右半面", false, R], ["L", "左半面", true, L]]) {
-    html += `<div class="tdTitle">${r + 1}段 ${name} ${sym}</div><div class="tdRow">`;
-    for (const second of [false, true]) {
-      const fig = (mirrored ? 3 : 1) + (second ? 1 : 0);
-      html += `<div class="tdFig"><span>図${fig}</span>`
-           + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n) + `</div>`;
-    }
-    html += `</div>`;
-  }
-  tedoriDiv.innerHTML = html;
+  const r = tedoriRow;
+  const L = sideSymbols("L")[r], R = sideSymbols("R")[r];
+  tedoriDiv.innerHTML = tdHalfHTML(`${r + 1}段 右半面 ${R.text}`, "R", r, false, R, n)
+                      + tdHalfHTML(`${r + 1}段 左半面 ${L.text}`, "L", r, true, L, n);
+}
+function setHiRange(range) {
+  hiRange = range;
+  applyHi();
+  for (const el of tedoriAllDiv.querySelectorAll(".tdGroup"))
+    el.classList.toggle("selRow", !!hiRange && Number(el.dataset.from) === hiRange[0]
+                                             && Number(el.dataset.to) === hiRange[1]);
 }
 function selectTedoriRow(r) {
   tedoriRow = (tedoriRow === r) ? null : r;
+  setHiRange(tedoriRow === null ? null : [tedoriRow, tedoriRow]);
   renderTedori();
   for (const tr of notationDiv.querySelectorAll("tr"))
     tr.classList.toggle("selRow", tedoriRow !== null && Number(tr.dataset.row) === tedoriRow);
 }
+document.getElementById("modeTableBtn").addEventListener("click", () => {
+  notationMode = 0; renderTedori();
+});
+document.getElementById("modeTedoriBtn").addEventListener("click", () => {
+  notationMode = 1; renderTedori();
+});
 
 /* ===== 仕上がりプレビュー ===== */
 const previewSvg = document.getElementById("previewSvg");
