@@ -291,9 +291,9 @@ function isSlash(side, r, d) {
   return side === "L" ? par : !par;
 }
 
-/* 45°に傾いた（角の尖った）長方形の糸の一片。長さ 2*CELL*0.96・幅 CELL*0.71（書籍 4-14 の写真の実測比）。
+/* 45°に傾いた（角の尖った）長方形の糸の一片。長さ 2*CELL*0.94・幅 CELL*0.90（隙間を最小にした比。書籍の実測は 0.96/0.71）。
    濃い線は長辺2本だけで、短い端は開いたまま。外端（d = N-1）だけ外側の短辺を半円に丸める */
-const BAND_LEN_SCALE = 0.96, BAND_WID_SCALE = 0.71;
+const BAND_LEN_SCALE = 0.94, BAND_WID_SCALE = 0.90;  // 隙間を最小に（重ならない上限 2*len+wid ≤ 2√2）
 const BAND_LEN = 2 * CELL * BAND_LEN_SCALE, BAND_WID = CELL * BAND_WID_SCALE;
 const BAND_A = BAND_LEN / 2, BAND_B = BAND_WID / 2;
 

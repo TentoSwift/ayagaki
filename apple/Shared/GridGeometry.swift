@@ -87,8 +87,8 @@ struct GridGeometry {
     /// 目の寸法比（半径 s に対して 長さ = 2s×lenScale・幅 = s×widScale）。
     /// 書籍 4-14 の写真を実測した比率: 端は隣の目とわずかな隙間（幅の1割）で接し、
     /// 平行に並ぶ目どうしの間は帯と同じ幅の白い筋があく
-    static let bandLenScale: CGFloat = 0.96
-    static let bandWidScale: CGFloat = 0.71
+    static let bandLenScale: CGFloat = 0.94   // 隙間を最小に: 2*len + wid ≤ 2√2 c（重ならない上限 2.83）
+    static let bandWidScale: CGFloat = 0.90
 
     /// 45°に傾いた（角の尖った）長方形＝糸の一片。長さ 2s×0.96・幅 s×0.71
     static func bandRect(at c: CGPoint, radius s: CGFloat, slash: Bool)
