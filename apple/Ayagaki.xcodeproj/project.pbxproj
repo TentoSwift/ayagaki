@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		066CC8325F0F75505BEE2042 /* PreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */; };
+		1DF4932FA35FC861BABBEBB0 /* TedoriView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C329D28294BDC32DE4CEE75 /* TedoriView.swift */; };
 		235A8BC183FA9C241A3B0FD5 /* ColorUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */; };
 		385CE4602E7A6D7C967F5C89 /* ColorUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */; };
 		5186F0D9B03632DABA8103D4 /* Design+CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */; };
@@ -33,6 +34,7 @@
 		B94CE0F7AC1CF111FFD851CB /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E86DC3229CF9275C77B463 /* Persistence.swift */; };
 		BCA47E1DDF44F0AE1B4A885E /* StdioMCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4150C543E5E9216B9D50C31 /* StdioMCPServer.swift */; };
 		BCA5B807E391D1110B686931 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B837B4A4EE5EAB3174B9488 /* EditorView.swift */; };
+		C229E6EF6474D245AAB12E06 /* TedoriView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C329D28294BDC32DE4CEE75 /* TedoriView.swift */; };
 		C47C20D989F1B7C2FE9A5E3B /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF549A8C82FBD9F1C2700D /* NotationView.swift */; };
 		C64699DA02E0D06AE4183AC7 /* Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D0B36F21F437C96D6E763A /* Export.swift */; };
 		C7FE9DBD9632434C306405F9 /* PDFSheetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8043F4B995C9E248C46116F1 /* PDFSheetRenderer.swift */; };
@@ -58,6 +60,7 @@
 		5B837B4A4EE5EAB3174B9488 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
 		6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServer.swift; sourceTree = "<group>"; };
 		78C77A11E22483BB1F2B6C43 /* BraidModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BraidModel.swift; sourceTree = "<group>"; };
+		7C329D28294BDC32DE4CEE75 /* TedoriView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TedoriView.swift; sourceTree = "<group>"; };
 		8043F4B995C9E248C46116F1 /* PDFSheetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFSheetRenderer.swift; sourceTree = "<group>"; };
 		830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design+CoreData.swift"; sourceTree = "<group>"; };
 		90F6A7F5C0EF7F2358E2B7EA /* AyagakiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AyagakiApp.swift; sourceTree = "<group>"; };
@@ -113,6 +116,7 @@
 				8043F4B995C9E248C46116F1 /* PDFSheetRenderer.swift */,
 				C0E86DC3229CF9275C77B463 /* Persistence.swift */,
 				CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */,
+				7C329D28294BDC32DE4CEE75 /* TedoriView.swift */,
 				0015BD87120A9CAF392F7D71 /* MCP */,
 			);
 			path = Shared;
@@ -228,6 +232,7 @@
 				B94CE0F7AC1CF111FFD851CB /* Persistence.swift in Sources */,
 				066CC8325F0F75505BEE2042 /* PreviewCanvasView.swift in Sources */,
 				F3CA96295716F1FF52A0EF6D /* StdioMCPServer.swift in Sources */,
+				1DF4932FA35FC861BABBEBB0 /* TedoriView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,6 +260,7 @@
 				8B6405BD78947521370FEDC6 /* Persistence.swift in Sources */,
 				83C699E596DF522E42725D0F /* PreviewCanvasView.swift in Sources */,
 				BCA47E1DDF44F0AE1B4A885E /* StdioMCPServer.swift in Sources */,
+				C229E6EF6474D245AAB12E06 /* TedoriView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

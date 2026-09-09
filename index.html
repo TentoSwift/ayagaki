@@ -84,6 +84,14 @@
 
   .previewWrap { overflow: auto; max-height: 340px; text-align: center; }
 
+  .tedori { overflow: auto; }
+  .tedori .tdTitle { font-size: 12px; font-weight: 600; color: var(--accent); margin: 8px 0 2px; }
+  .tedori .tdRow { display: flex; gap: 14px; align-items: flex-start; }
+  .tedori .tdFig { text-align: center; }
+  .tedori .tdFig > span { display: block; font-size: 11px; color: #8a8270; }
+  .tedori .tdEmpty { font-size: 12px; color: #8a8270; }
+  table.nota tr.selRow > td { background: #fdeaea; }
+  table.nota tr:not(:first-child) { cursor: pointer; }
   .hint { font-size: 11.5px; color: #8a8270; line-height: 1.6; margin-top: 8px; }
 
   .fileRow input[type="file"] { display: none; }
@@ -162,6 +170,11 @@
     <div class="card">
       <h2>交換記号（自動生成）</h2>
       <div class="notation" id="notation"></div>
+    </div>
+
+    <div class="card">
+      <h2>手取り図（書籍 4-4〜4-9）</h2>
+      <div id="tedori" class="tedori"></div>
     </div>
 
     <div class="card">
@@ -515,6 +528,19 @@ function numberList(circledNums, plainNums, beforeNami) {
   if (!out.endsWith(".") && !beforeNami) out += ".";
   return out;
 }
+// 綾名の材料になる「単位列」（true=上／false=下、ナミは全 false）。
+// 手取り図はこれをそのまま使う（生成済みの記号文字列を再パースしない）
+function ayaSlots(side, r) {
+  const N = cols(), out = [];
+  for (let d = 1; d < N; d += 2) out.push(app.cells[side][r][d] > 0);
+  return out;
+}
+// 手取り図（書籍 4-4〜4-9）のスロット列（上から順）。綾名の単位を**逆順**にしたもの。
+// 図2 は上下を入れかえた綾名を同じ規則で描く＝各単位を反転
+function tedoriSlots(side, r, second) {
+  const s = ayaSlots(side, r).reverse();
+  return second ? s.map(v => !v) : s;
+}
 function ayaName(slots) {
   // 綾名は全区間を「上a下b…」で数字付きで略さず書く（1も書く。合計は常に6）
   if (!slots.some(Boolean)) return "ナミ";
@@ -527,9 +553,6 @@ function ayaName(slots) {
 }
 function sideTexts(side) {
   const N = cols();
-  const idx = [];
-  for (let d = 1; d < N; d += 2) idx.push(d);
-
   const texts = [];
   const opp = side === "R" ? "L" : "R";
   let opRun = 0;
@@ -601,7 +624,7 @@ function sideTexts(side) {
   }
   for (let r = 0; r < app.rows; r++) {
     // 綾名は入れかえの目（d 奇数）だけを読む。偶数列（縦に進む列）は糸交換のみ
-    const slots = idx.map(d => app.cells[side][r][d] > 0);
+    const slots = ayaSlots(side, r);
     const risesAtCenter = riseAt(r);  // 中央の色による上ル（左半面は1段前）
     // 45度に色を辿る（1段1目外。1段おきの塗りは2段2目でも続きとみなす）。
     // 歩調は一貫させる: 1段1目で進んできた連なりは2段2目へ乗り換えない（逆も同じ）。
@@ -725,8 +748,12 @@ function renderNotation() {
     const tr = document.createElement("tr");
     const seg = gp.from === gp.to ? `${gp.from + 1}` : `${gp.from + 1}〜${gp.to + 1}`;
     tr.innerHTML = `<td class="seg">${seg}</td><td>${gp.L}</td><td>${gp.R}</td>`;
+    tr.dataset.row = gp.from;
+    if (tedoriRow === gp.from) tr.classList.add("selRow");
     tr.addEventListener("mouseenter", () => highlightRows(gp.from, gp.to, true));
     tr.addEventListener("mouseleave", () => highlightRows(gp.from, gp.to, false));
+    // 段をクリックすると手取り図がその段に切り替わる（記号表自体は読み取り専用）
+    tr.addEventListener("click", () => selectTedoriRow(gp.from));
     tbl.appendChild(tr);
   }
   notationDiv.innerHTML = "";
@@ -741,6 +768,142 @@ function highlightRows(from, to, on) {
         const p = cellIndex[`${side}-${r}-${d}`];
         if (p) p.classList.toggle("rowHi", on);
       }
+}
+
+/* ===== 手取り図（書籍 4-4〜4-9） ===== */
+// 座標は「1段の間隔 = 1.0」の正規化系（写真 h_nami1 / h_ue1_1 の実測から）。
+// 帯（糸列）は左から A・B（左の対）、間を空けて C・D（右の対）。
+const TD = {
+  xA: 1.15, xB: 2.30, xC: 4.95, xD: 6.10,
+  width: 7.85, bandHW: 0.33, dotR: 0.34, loopReach: 0.80,
+  get xGap() { return (this.xC + this.xD) / 2; },
+};
+const TD_UNIT = 20;   // 1段の間隔（px）
+
+// 玉の配置。図1: A=3…N+1(白), B=2…N+1(黒), C=1…N+1(黒), D=2…N+1(白) → N-1, N, N+1, N
+//            図2: A=2…N(白),   B=1…N+1(黒), C=1…N(黒),   D=1…N(白)   → N-1, N+1, N, N
+function tdBands(n, second) {
+  return second
+    ? [[TD.xA, 2, n, false], [TD.xB, 1, n + 1, true], [TD.xC, 1, n, true], [TD.xD, 1, n, false]]
+    : [[TD.xA, 3, n + 1, false], [TD.xB, 2, n + 1, true], [TD.xC, 1, n + 1, true], [TD.xD, 2, n + 1, false]];
+}
+// 綾の単位を置く段（上から）。図1 は 5,7,…,N ／ 図2 は 4,6,…,N-1
+function tdSlotRows(n, second, count) {
+  const last = second ? n - 1 : n, out = [];
+  for (let i = 0; i < count; i++) out.push(last - 2 * (count - 1 - i));
+  return out;
+}
+// 通過点を Catmull-Rom で滑らかに繋ぐ
+function tdSmooth(pts) {
+  if (pts.length < 2) return "";
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i];
+    const p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C ${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
+// 手取り図 1 枚（SVG 文字列）。slots は上から順（true=上）
+function tedoriSVG(slots, second, mirrored, n) {
+  const rows = n + 1, U = TD_UNIT;
+  const y = k => 1.35 + (k - 1);
+  const H = rows + 3.0;
+  const mx = x => mirrored ? TD.width - x : x;      // 左半面は左右鏡像
+  const P = (x, yy) => [mx(x) * U, yy * U];
+  const bandTop = y(1) - 0.60, bandBottom = H - 0.15, countY = y(1) - 1.00;
+  let out = "";
+
+  // 帯・糸数・玉
+  for (const [bx, first, last, filled] of tdBands(n, second)) {
+    const cx = mx(bx) * U;
+    out += `<rect x="${cx - TD.bandHW * U}" y="${bandTop * U}" width="${TD.bandHW * 2 * U}" `
+        + `height="${(bandBottom - bandTop) * U}" rx="2" fill="#c9c4bb"/>`;
+    out += `<text x="${cx}" y="${countY * U}" text-anchor="middle" dominant-baseline="middle" `
+        + `font-size="${U * 0.62}" fill="#2b2620">${last - first + 1}</text>`;
+    for (let k = first; k <= last; k++) {
+      const [px, py] = P(bx, y(k));
+      out += filled
+        ? `<circle cx="${px}" cy="${py}" r="${TD.dotR * U}" fill="#1a1a1a"/>`
+        : `<circle cx="${px}" cy="${py}" r="${TD.dotR * U}" fill="#fbfaf7" stroke="#1a1a1a" stroke-width="${U * 0.045}"/>`;
+    }
+  }
+
+  // 動かす糸の経路
+  const pts = [];
+  const y1 = y(1);
+  // 始点: C の一番上の黒玉の左に小さくフックする
+  pts.push(P(TD.xC - 0.55, y1 - 0.34), P(TD.xC - 0.88, y1 + 0.04), P(TD.xC - 0.12, y1 + 0.40));
+  // 図2 は続けて D の一番上の白玉の右へ回ってから間に降りる（写真 h_nami2 / h_ue1_2）
+  if (second) pts.push(P(TD.xD + 0.60, y1 + 0.10));
+  pts.push(P(TD.xGap, y1 + 0.90));
+  const srows = tdSlotRows(n, second, slots.length);
+  for (let k = 2; k <= rows; k++) {
+    const i = srows.indexOf(k);
+    if (i >= 0) {
+      // 上 = その段の白玉（D）の右を回るループ、下 = 黒玉（C）の左を回るループ
+      const c = slots[i] ? TD.xD : TD.xC;
+      const sg = slots[i] ? 1 : -1;          // 外向き（上は右、下は左）
+      const yk = y(k);
+      pts.push(P(TD.xGap, yk - 0.60), P(c + sg * -0.10, yk - 0.52), P(c + sg * 0.50, yk - 0.40),
+               P(c + sg * TD.loopReach, yk), P(c + sg * 0.50, yk + 0.40),
+               P(c + sg * -0.10, yk + 0.52), P(TD.xGap, yk + 0.60));
+    } else {
+      pts.push(P(TD.xGap, y(k)));            // 素通り
+    }
+  }
+  // 最後の段を素通りしてから左に曲がる
+  pts.push(P(TD.xGap, y(rows) + 0.80), P(TD.xGap - 0.55, y(rows) + 1.20));
+  out += `<path d="${tdSmooth(pts)}" fill="none" stroke="#1a1a1a" stroke-width="${U * 0.11}" `
+      + `stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // 矢印（左の対へ糸を渡す）
+  const ay = y(rows) + 1.20;
+  const [fx, fy] = P(TD.xGap - 0.55, ay), [tx, ty] = P(TD.xB - 0.55, ay);
+  const dir = mirrored ? 1 : -1, hw = U * 0.30, hl = U * 0.70;
+  out += `<line x1="${fx}" y1="${fy}" x2="${tx}" y2="${ty}" stroke="#1a1a1a" stroke-width="${U * 0.09}" stroke-linecap="round"/>`;
+  out += `<path d="M ${tx} ${ty} L ${tx - dir * hl} ${ty - hw} L ${tx - dir * hl} ${ty + hw} Z" fill="#1a1a1a"/>`;
+
+  // 上／下 のラベル（文字は鏡像にしない）
+  srows.forEach((k, i) => {
+    const over = slots[i];
+    const [lx, ly] = P(over ? TD.xD + 1.45 : TD.xC - 1.45, y(k));
+    out += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" `
+        + `font-size="${U * 0.72}" fill="#2b2620">${over ? "上" : "下"}</text>`;
+  });
+
+  const W = TD.width * U, HH = H * U;
+  return `<svg viewBox="0 0 ${W} ${HH}" width="${W}" height="${HH}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
+}
+
+const tedoriDiv = document.getElementById("tedori");
+let tedoriRow = null;      // 記号表で選んだ段
+function renderTedori() {
+  if (tedoriRow === null || tedoriRow >= app.rows) {
+    tedoriDiv.innerHTML = `<div class="tdEmpty">交換記号の段をクリックすると、その段の手取り図を表示します。</div>`;
+    return;
+  }
+  const r = tedoriRow, n = app.tama / 4;   // N = 片腕の糸数（60玉=15）
+  const L = sideTexts("L")[r], R = sideTexts("R")[r];
+  let html = "";
+  for (const [side, name, mirrored, sym] of [["R", "右半面", false, R], ["L", "左半面", true, L]]) {
+    html += `<div class="tdTitle">${r + 1}段 ${name} ${sym}</div><div class="tdRow">`;
+    for (const second of [false, true]) {
+      const fig = (mirrored ? 3 : 1) + (second ? 1 : 0);
+      html += `<div class="tdFig"><span>図${fig}</span>`
+           + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n) + `</div>`;
+    }
+    html += `</div>`;
+  }
+  tedoriDiv.innerHTML = html;
+}
+function selectTedoriRow(r) {
+  tedoriRow = (tedoriRow === r) ? null : r;
+  renderTedori();
+  for (const tr of notationDiv.querySelectorAll("tr"))
+    tr.classList.toggle("selRow", tedoriRow !== null && Number(tr.dataset.row) === tedoriRow);
 }
 
 /* ===== 仕上がりプレビュー ===== */
@@ -798,7 +961,7 @@ function shade(hex, amt) {
 let derivedTimer = null;
 function scheduleDerived() {
   clearTimeout(derivedTimer);
-  derivedTimer = setTimeout(() => { renderNotation(); renderPreview(); }, 120);
+  derivedTimer = setTimeout(() => { renderNotation(); renderTedori(); renderPreview(); }, 120);
 }
 
 /* ===== 保存・読み込み ===== */
@@ -855,6 +1018,7 @@ function fullRender() {
     `綾書 — ${app.tama}玉二枚安田組${app.name ? "「" + app.name + "」" : ""}`;
   renderGrid();
   renderNotation();
+  renderTedori();
   renderPreview();
 }
 

@@ -164,6 +164,17 @@ enum Notation {
         return stride(from: 1, to: rowCells.count, by: 2).map { rowCells[$0] > 0 }
     }
 
+    /// 綾名の材料になる「単位列」（true=上／false=下、ナミは全 false）。
+    /// 手取り図はこれをそのまま使う（生成済みの記号文字列を再パースしない）
+    static func ayaSlots(rowCells: [Int]) -> [Bool] { sampledSlots(rowCells) }
+
+    /// 手取り図（書籍 4-4〜4-9）のスロット列（上から順）。
+    /// 綾名の単位を**逆順**にしたもの。図2 は上下を入れかえた綾名を同じ規則で描く＝各単位を反転
+    static func tedoriSlots(rowCells: [Int], second: Bool) -> [Bool] {
+        let s = Array(sampledSlots(rowCells).reversed())
+        return second ? s.map { !$0 } : s
+    }
+
     /// 綾名（ナミ／上a下b…）。全区間を数字付きで略さず書く（1も書く。合計は常に6）
     private static func ayaName(_ slots: [Bool]) -> String {
         guard slots.contains(true) else { return "ナミ" }

@@ -11,7 +11,7 @@ struct EditorView: View {
     @State private var paintEnabled = true          // iOS: 塗る / スクロール切り替え
     @State private var showSettings = false
     @State private var showClearConfirm = false
-    @State private var compactTab = 0               // 0=記号, 1=プレビュー
+    @State private var compactTab = 0               // 0=記号, 1=手取り図, 2=プレビュー
 
     @State private var exportingJSON = false
     @State private var importingJSON = false
@@ -83,6 +83,7 @@ struct EditorView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("交換記号").font(.headline)
                     NotationView(vm: vm)
+                    TedoriPanel(vm: vm).padding(.top, 8)
                     Text("仕上がりプレビュー（2リピート）").font(.headline).padding(.top, 8)
                     HStack { Spacer(); PreviewCanvasView(vm: vm); Spacer() }
                     legend
@@ -101,7 +102,8 @@ struct EditorView: View {
             Divider()
             Picker("", selection: $compactTab) {
                 Text("交換記号").tag(0)
-                Text("プレビュー").tag(1)
+                Text("手取り図").tag(1)
+                Text("プレビュー").tag(2)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 12)
@@ -109,6 +111,8 @@ struct EditorView: View {
             Group {
                 if compactTab == 0 {
                     ScrollView { NotationView(vm: vm).padding(.horizontal, 8) }
+                } else if compactTab == 1 {
+                    ScrollView { TedoriPanel(vm: vm, unit: 15).padding(8) }
                 } else {
                     ScrollView([.horizontal, .vertical]) { PreviewCanvasView(vm: vm).padding(8) }
                 }

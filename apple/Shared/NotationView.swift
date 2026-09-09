@@ -17,14 +17,15 @@ struct NotationTable: View {
                         .font(.caption.weight(.semibold))
                         .foregroundColor(.accentColor)
                         .frame(width: 56, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onTap?(g) }
                     notationCell(g.left)
                     notationCell(g.right)
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
                 .background(isSelected ? Color.red.opacity(0.12) : Color.clear)
+                // 段をタップすると選択され、手取り図がその段に切り替わる（記号表自体は読み取り専用）
+                .contentShape(Rectangle())
+                .onTapGesture { onTap?(g) }
                 Divider()
             }
         }
