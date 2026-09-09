@@ -7,12 +7,14 @@ struct ContentView: View {
     private var designs: FetchedResults<Design>
 
     @State private var selection: NSManagedObjectID?
+    // iPad: デザインを開いたらサイドバーを畳んでグリッドに幅を明け渡す（ツールバーのボタンで再表示できる）
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     #if os(macOS)
     @EnvironmentObject private var mcpServer: MCPServerController
     #endif
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(designs, id: \.objectID, selection: $selection) { design in
                 DesignRow(design: design)
                     .id(design.objectID)  // セル再利用で別デザインの内容が残らないよう明示
@@ -76,6 +78,12 @@ struct ContentView: View {
                 }
             }
         }
+        #if os(iOS)
+        // iPad ではサイドバーが出ているとグリッドが狭くなるので、開いたら畳む
+        .onChange(of: selection) { newValue in
+            columnVisibility = newValue == nil ? .automatic : .detailOnly
+        }
+        #endif
     }
 
     private func addDesign() {

@@ -9,6 +9,9 @@ struct EditorView: View {
     @StateObject private var vm: EditorViewModel
 
     @State private var paintEnabled = true          // iOS: 塗る / スクロール切り替え
+    // グリッドの表示倍率。1 = 「全体」（表示領域に全段・両半面・段番号が収まる縮尺）
+    @State private var zoom: CGFloat = 1
+    @State private var pinchZoom: CGFloat = 1
     @State private var showSettings = false
     @State private var showClearConfirm = false
     // デバッグ用: 起動引数 --tedori で手取り図モードを開いた状態で起動（シミュレータでの表示確認用）
@@ -64,7 +67,8 @@ struct EditorView: View {
     private var layout: some View {
         #if os(iOS)
         if hSize == .compact {
-            compactLayout
+            // iPhone は大タイトルをやめてグリッドに高さを回す
+            compactLayout.navigationBarTitleDisplayMode(.inline)
         } else {
             wideLayout
         }
@@ -107,36 +111,58 @@ struct EditorView: View {
     }
 
     private var compactLayout: some View {
-        VStack(spacing: 0) {
-            controlBar
-            Divider()
-            gridScroll
-            Divider()
-            Picker("", selection: $compactTab) {
-                Text("交換記号").tag(0)
-                Text("手取り図").tag(1)
-                Text("プレビュー").tag(2)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            Group {
-                if compactTab == 0 {
-                    ScrollView { NotationView(vm: vm).padding(.horizontal, 8) }
-                } else if compactTab == 1 {
-                    ScrollView { TedoriListView(vm: vm, unit: 14).padding(8) }
-                } else {
-                    ScrollView([.horizontal, .vertical]) { PreviewCanvasView(vm: vm).padding(8) }
+        // iPhone: グリッドが画面の上半分〜6割を使い、その中にデザイン全体が収まる
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                controlBar
+                Divider()
+                gridScroll          // 残り（＝およそ上半分〜6割）を使う
+                Divider()
+                Picker("", selection: $compactTab) {
+                    Text("交換記号").tag(0)
+                    Text("手取り図").tag(1)
+                    Text("プレビュー").tag(2)
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                Group {
+                    if compactTab == 0 {
+                        ScrollView { NotationView(vm: vm).padding(.horizontal, 8) }
+                    } else if compactTab == 1 {
+                        ScrollView { TedoriListView(vm: vm, unit: 14).padding(8) }
+                    } else {
+                        ScrollView([.horizontal, .vertical]) { PreviewCanvasView(vm: vm).padding(8) }
+                    }
+                }
+                .frame(height: max(160, min(230, proxy.size.height * 0.27)))
             }
-            .frame(height: 230)
         }
     }
 
+    /// グリッド表示。既定は「全体」＝表示領域に全段・両半面・段番号が収まる縮尺。
+    /// ピンチ（iOS）／トラックパッドの拡大（macOS）で拡大でき、拡大時だけスクロールする。
     private var gridScroll: some View {
-        ScrollView([.horizontal, .vertical]) {
-            GridCanvasView(vm: vm, paintEnabled: paintEnabled)
-                .padding(8)
+        GeometryReader { proxy in
+            let pad: CGFloat = 8
+            let avail = CGSize(width: max(proxy.size.width - 2 * pad, 1),
+                               height: max(proxy.size.height - 2 * pad, 1))
+            let fit = GridGeometry.fitScale(cols: vm.cols, rows: vm.rowCount, in: avail)
+            let scale = max(0.05, fit * zoom * pinchZoom)
+            ScrollView([.horizontal, .vertical]) {
+                GridCanvasView(vm: vm, paintEnabled: paintEnabled, scale: scale)
+                    .padding(pad)
+                    // 全体表示のときは中央に置く（拡大するとスクロール領域が広がる）
+                    .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
+            }
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .onChanged { value in pinchZoom = value }
+                    .onEnded { value in
+                        zoom = min(max(zoom * value, 1), 10)
+                        pinchZoom = 1
+                    }
+            )
         }
         #if os(iOS)
         .background(Color(uiColor: .systemBackground))
@@ -207,6 +233,15 @@ struct EditorView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                zoom = 1
+                pinchZoom = 1
+            } label: {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+            }
+            .disabled(zoom == 1 && pinchZoom == 1)
+            .help("全体を表示（デザイン全体が収まる縮尺に戻す）")
+
             #if os(iOS)
             Button {
                 paintEnabled.toggle()

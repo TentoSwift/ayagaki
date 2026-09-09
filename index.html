@@ -26,7 +26,7 @@
   header h1 { font-size: 18px; margin: 0; }
   header .sub { color: #8a8270; font-size: 12px; }
   .layout {
-    display: grid; grid-template-columns: minmax(380px, auto) 1fr;
+    display: grid; grid-template-columns: minmax(380px, 1fr) minmax(360px, 420px);
     gap: 16px; padding: 16px; align-items: start;
   }
   @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
@@ -70,10 +70,20 @@
   }
   .swatch span { font-size: 11px; }
 
-  svg.grid { display: block; touch-action: none; }
+  /* viewBox で全体を縮小表示（デザイン全体＝全段・両半面・段番号が画面に収まる）。
+     当たり判定は elementFromPoint なので縮小しても正しい目に当たる */
+  svg.grid {
+    display: block; touch-action: none; margin: 0 auto;
+    width: 100%; height: auto;
+    /* 高さの上限だけでは（width が確定しているため）横に余白が残るので、
+       縦横比 --gridRatio = w/h から横幅の上限も出して「幅・高さ両方に収まる」ようにする */
+    max-width: min(100%, calc((100vh - 140px) * var(--gridRatio, 0.5)));
+    max-height: calc(100vh - 140px);
+  }
   svg.grid .cell { cursor: crosshair; }
   svg.grid .cell.rowHi { stroke: #e0392b; stroke-width: 1.6; }
-  svg.grid text.num { font-size: 9px; fill: #9a927e; user-select: none; }
+  /* 段番号は縮小率に応じて user unit を大きくし、画面上で 9px を下回らないようにする */
+  svg.grid text.num { font-size: var(--numFS, 9px); fill: #9a927e; user-select: none; }
 
   .notation { max-height: 320px; overflow: auto; }
   table.nota { border-collapse: collapse; width: 100%; font-size: 12px; }
@@ -111,6 +121,7 @@
     body { background: #fff; }
     .layout { display: block; padding: 0; }
     .gridPane { max-height: none; overflow: visible; border: none; }
+    svg.grid { width: auto; height: auto; max-width: none; max-height: none; }
     .sidePane { position: static; }
     .card { border: none; page-break-inside: avoid; }
     .notation { max-height: none; overflow: visible; }
@@ -310,8 +321,11 @@ let cellIndex = {};  // "side-r-d" -> polygon要素
 function renderGrid() {
   const g = geo();
   gridSvg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
-  gridSvg.setAttribute("width", g.w);
-  gridSvg.setAttribute("height", g.h);
+  // 実寸は CSS（width:100% + max-height）に任せ、viewBox で全体を縮小表示する
+  gridSvg.removeAttribute("width");
+  gridSvg.removeAttribute("height");
+  gridSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  gridSvg.style.setProperty("--gridRatio", g.w / g.h);
   gridSvg.innerHTML = "";
   cellIndex = {};
   const frag = document.createDocumentFragment();
@@ -380,7 +394,20 @@ function renderGrid() {
   frag.appendChild(zig);
   for (const h of hits) frag.appendChild(h);
   gridSvg.appendChild(frag);
+  fitGridNumbers();
 }
+
+/* 縮小表示でも段番号が読めるよう、表示倍率に合わせて文字の user unit を補正する */
+function fitGridNumbers() {
+  const vb = gridSvg.viewBox.baseVal;
+  if (!vb || !vb.width) return;
+  const shown = gridSvg.getBoundingClientRect().width;
+  if (!shown) return;
+  const scale = shown / vb.width;
+  const fs = Math.max(9, Math.min(18, 9 / scale));   // 画面上で 9px 以上、user unit は 18 まで
+  gridSvg.style.setProperty("--numFS", fs.toFixed(1) + "px");
+}
+window.addEventListener("resize", fitGridNumbers);
 
 function cellValue(side, r, d) {
   return side === "C" ? app.cells.C[r] : app.cells[side][r][d];

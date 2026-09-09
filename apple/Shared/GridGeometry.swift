@@ -9,6 +9,22 @@ struct GridGeometry {
     var numW: CGFloat = 30      // 段番号の帯幅
     var margin: CGFloat = 8
 
+    /// 基準寸法（scale = 1 のとき）
+    static let baseCell: CGFloat = 12
+    static let baseNumW: CGFloat = 30
+    static let baseMargin: CGFloat = 8
+
+    /// 現在の表示倍率（線幅・文字サイズの算出用）
+    var scale: CGFloat { cell / Self.baseCell }
+
+    /// 与えられた表示領域に全体（全段・両半面・段番号）が収まる倍率
+    static func fitScale(cols: Int, rows: Int, in available: CGSize) -> CGFloat {
+        let base = GridGeometry(cols: cols, rows: rows, scale: 1)
+        guard base.size.width > 0, base.size.height > 0,
+              available.width > 0, available.height > 0 else { return 1 }
+        return min(available.width / base.size.width, available.height / base.size.height)
+    }
+
     var cx: CGFloat { margin + numW + CGFloat(cols + 1) * cell }
     var y0: CGFloat { margin + CGFloat(cols) * cell }
 
@@ -157,7 +173,9 @@ struct GridGeometry {
         return p
     }
 
-    /// タッチ位置 → セル（菱形の内包判定つき。境界付近は両半面を試す）
+    /// タッチ位置 → セル（菱形の内包判定つき。境界付近は両半面を試す）。
+    /// 座標は「この幾何と同じ倍率で描かれた」表示座標であること
+    /// （表示側で縮小している場合は倍率で割ってから渡すか、同じ scale の幾何を使う）
     func hitTest(_ p: CGPoint) -> (side: BraidSide, r: Int, d: Int)? {
         for side in [BraidSide.right, .left] {
             let dxRaw = side == .right ? (p.x - cx) : (cx - p.x)
@@ -176,5 +194,16 @@ struct GridGeometry {
             }
         }
         return nil
+    }
+}
+
+extension GridGeometry {
+    /// 表示倍率から幾何を作る。**全ての寸法を同じ倍率で縮める**ので、
+    /// 描画も当たり判定（hitTest）も同じ座標系のまま整合する。
+    init(cols: Int, rows: Int, scale: CGFloat) {
+        self.init(cols: cols, rows: rows,
+                  cell: GridGeometry.baseCell * scale,
+                  numW: GridGeometry.baseNumW * scale,
+                  margin: GridGeometry.baseMargin * scale)
     }
 }
