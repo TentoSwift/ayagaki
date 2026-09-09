@@ -363,7 +363,7 @@ struct TedoriHalfView: View {
                             let fig = TedoriFigure(
                                 slots: Notation.tedoriSlots(rowCells: cells, second: second),
                                 second: second, mirrored: mirrored, threads: threads,
-                                rise: symbol.rise)
+                                rise: symbol.rise && !second)   // ⬆ で上ルのは最初の手順（図1・図3）だけ。図2・図4 は下ル
                             Text("図\(fig.index)").font(.caption2).foregroundColor(.secondary)
                             TedoriCanvas(figure: fig, unit: unit)
                         }

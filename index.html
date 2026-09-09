@@ -1013,7 +1013,7 @@ function tdHalfHTML(title, side, r, mirrored, sym, n) {
   for (const second of [false, true]) {
     const fig = (mirrored ? 3 : 1) + (second ? 1 : 0);
     h += `<div class="tdFig"><span>図${fig}</span>`
-       + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n, !!sym.rise) + `</div>`;
+       + tedoriSVG(tedoriSlots(side, r, second), second, mirrored, n, !!sym.rise && !second) /* ⬆ で上ルのは図1・図3 だけ */ + `</div>`;
   }
   const marks = tdMarks(sym);
   if (marks.length) {
