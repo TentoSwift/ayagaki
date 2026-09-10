@@ -24,7 +24,7 @@ enum BraidSpec {
         return 13 + (t - 60) / 4
     }
     static let tamaOptions = [60, 68, 76, 84, 92, 100]
-    static let rowRange = 4...120
+    static let rowRange = 4...400
     static let defaultRows = 40
     static let defaultPalette = ["#DFE6C4", "#A2653A", "#3F5DA8", "#C8B23C"]
     /// 地の色に対して柄色は1つ（UI は先頭2色のみ。配列は保存データ互換のため4色のまま）

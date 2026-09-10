@@ -14,6 +14,7 @@ struct EditorView: View {
     @State private var pinchZoom: CGFloat = 1
     @State private var showSettings = false
     @State private var showClearConfirm = false
+    @State private var showRemoveRowsConfirm = false
     // デバッグ用: 起動引数 --tedori で手取り図モードを開いた状態で起動（シミュレータでの表示確認用）
     @State private var compactTab = CommandLine.arguments.contains("--tedori") ? 1 : 0   // 0=記号, 1=手取り図, 2=プレビュー
     @State private var notationTab = CommandLine.arguments.contains("--tedori") ? 1 : 0  // 0=記号表, 1=手取り図（全段）
@@ -40,6 +41,10 @@ struct EditorView: View {
             .sheet(isPresented: $showSettings) { settingsSheet }
             .confirmationDialog("すべてのマスを消去しますか？", isPresented: $showClearConfirm, titleVisibility: .visible) {
                 Button("全消去", role: .destructive) { vm.clearAll() }
+            }
+            .confirmationDialog("末尾の段に色があります。10段減らしますか？",
+                                isPresented: $showRemoveRowsConfirm, titleVisibility: .visible) {
+                Button("10段減らす", role: .destructive) { vm.removeRows() }
             }
             .fileExporter(isPresented: $exportingJSON,
                           document: jsonDoc ?? JSONFile(data: Data()),
@@ -82,7 +87,7 @@ struct EditorView: View {
             VStack(spacing: 0) {
                 controlBar
                 Divider()
-                gridScroll
+                gridSection
             }
             Divider()
             ScrollView {
@@ -116,7 +121,7 @@ struct EditorView: View {
             VStack(spacing: 0) {
                 controlBar
                 Divider()
-                gridScroll          // 残り（＝およそ上半分〜6割）を使う
+                gridSection          // 残り（＝およそ上半分〜6割）を使う
                 Divider()
                 Picker("", selection: $compactTab) {
                     Text("交換記号").tag(0)
@@ -138,6 +143,52 @@ struct EditorView: View {
                 .frame(height: max(160, min(230, proxy.size.height * 0.27)))
             }
         }
+    }
+
+    /// グリッドと、その下端に置く段の増減バー
+    private var gridSection: some View {
+        VStack(spacing: 0) {
+            gridScroll
+            Divider()
+            rowStepBar
+        }
+    }
+
+    /// グリッドの下（最終段の下）で段を10段ずつ足す／減らす
+    private var rowStepBar: some View {
+        HStack(spacing: 10) {
+            Button {
+                if vm.lastRowsHaveColor {
+                    showRemoveRowsConfirm = true
+                } else {
+                    vm.removeRows()
+                }
+            } label: {
+                Label("−10段", systemImage: "minus")
+                    .font(.caption)
+                    .labelStyle(.titleOnly)
+            }
+            .disabled(!vm.canRemoveRows)
+            .help("末尾の段を10段減らす")
+
+            Button {
+                vm.addRows()
+            } label: {
+                Label("＋10段", systemImage: "plus")
+                    .font(.caption)
+                    .labelStyle(.titleOnly)
+            }
+            .disabled(!vm.canAddRows)
+            .help("末尾に10段足す（長いデザインにする）")
+
+            Text("\(vm.rowCount)段 / 最大\(BraidSpec.rowRange.upperBound)段")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .buttonStyle(.bordered)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     /// グリッド表示。既定は「全体」＝表示領域に全段・両半面・段番号が収まる縮尺。
@@ -380,6 +431,9 @@ private struct SettingsForm: View {
                 Stepper("段数：\(vm.rowCount)",
                         value: Binding(get: { vm.rowCount }, set: { vm.setRows($0) }),
                         in: BraidSpec.rowRange)
+                Text("グリッドの下の「＋10段」でも段を追加できます（最大\(BraidSpec.rowRange.upperBound)段）。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             Section {
                 Button("全消去", role: .destructive) {

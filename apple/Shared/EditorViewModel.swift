@@ -14,7 +14,13 @@ final class EditorViewModel: ObservableObject {
     @Published var symmetric: Bool = false
     @Published var highlighted: ClosedRange<Int>? = nil
 
-    private var undoStack: [CellGrid] = []
+    /// 元に戻す用のスナップショット（段数・玉数も一緒に保存する）
+    private struct UndoEntry {
+        var cells: CellGrid
+        var rows: Int
+        var tama: Int
+    }
+    private var undoStack: [UndoEntry] = []
     private var strokeActive = false
     /// ストロークの最初のマスと、そこに元々入っていた値（単独タップのトグル判定用）
     private var strokeFirst: (side: BraidSide, r: Int, d: Int)?
@@ -149,13 +155,16 @@ final class EditorViewModel: ObservableObject {
     // MARK: 元に戻す・全消去
 
     private func pushUndo() {
-        undoStack.append(cells)
+        undoStack.append(UndoEntry(cells: cells, rows: rowCount, tama: tama))
         if undoStack.count > 100 { undoStack.removeFirst() }
     }
 
     func undo() {
         guard let prev = undoStack.popLast() else { return }
-        cells = prev.resized(rows: rowCount, cols: cols)
+        tama = prev.tama
+        rowCount = prev.rows
+        cells = prev.cells.resized(rows: rowCount, cols: cols)
+        highlighted = nil
         scheduleSave()
     }
 
@@ -183,6 +192,25 @@ final class EditorViewModel: ObservableObject {
         cells = cells.resized(rows: v, cols: cols)
         scheduleSave()
     }
+
+    /// グリッドの下に段を足す／減らす（末尾に地色の段。塗った内容は保持される）
+    static let rowStep = 10
+    var canAddRows: Bool { rowCount < BraidSpec.rowRange.upperBound }
+    var canRemoveRows: Bool { rowCount > BraidSpec.rowRange.lowerBound }
+    /// 消される末尾の段に色があるか（確認ダイアログの要否）
+    var lastRowsHaveColor: Bool {
+        let target = max(BraidSpec.rowRange.lowerBound, rowCount - Self.rowStep)
+        guard target < rowCount else { return false }
+        for r in target..<rowCount {
+            for side in [BraidSide.left, .right] {
+                for d in 0..<cols where cells.value(side: side, r: r, d: d) > 0 { return true }
+            }
+            for j in [2 * r, 2 * r + 1] where cells.value(side: .center, r: j, d: 0) > 0 { return true }
+        }
+        return false
+    }
+    func addRows(_ n: Int = EditorViewModel.rowStep) { setRows(rowCount + n) }
+    func removeRows(_ n: Int = EditorViewModel.rowStep) { setRows(rowCount - n) }
 
     func setPaletteColor(_ hex: String, at index: Int) {
         guard palette.indices.contains(index) else { return }

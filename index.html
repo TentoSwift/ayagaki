@@ -35,6 +35,14 @@
     background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
     padding: 12px; overflow: auto; max-height: calc(100vh - 90px);
   }
+  .rowStepBar {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    padding-top: 8px; border-top: 1px solid var(--border);
+  }
+  .rowStepBar .rowStepInfo { font-size: 12px; color: #8a8270; }
+  .rowStepBar button:disabled { opacity: .45; cursor: default; }
+  @media print { .rowStepBar { display: none; } }
+
   .sidePane { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px; }
 
   .card {
@@ -141,6 +149,11 @@
   <div class="gridPane">
     <div class="printTitle" id="printTitle"></div>
     <svg class="grid" id="gridSvg"></svg>
+    <div class="rowStepBar">
+      <button id="rowsMinusBtn" title="末尾の段を10段減らす">−10段</button>
+      <button id="rowsPlusBtn" title="末尾に10段足す（長いデザインにする）">＋10段</button>
+      <span class="rowStepInfo" id="rowStepInfo"></span>
+    </div>
   </div>
 
   <div class="sidePane">
@@ -157,7 +170,7 @@
             <option value="100">100玉（片面23目）</option>
           </select>
         </label>
-        <label>段数 <input type="number" id="rowsInp" min="4" max="120" value="40"></label>
+        <label>段数 <input type="number" id="rowsInp" min="4" max="400" value="40"></label>
         <label><input type="checkbox" id="symChk"> 左右対称に塗る</label>
       </div>
       <div class="row">
@@ -182,6 +195,7 @@
       </div>
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。同じマスをもう一度タップすると消えます。<br>
+        グリッドの下の<b>「＋10段」</b>で段を追加できます（最大400段）。「−10段」で末尾の段を減らせます。<br>
         記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
         数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。⬆（中央で上ル）は中央の色（d=0）から自動で導出されます（記号表は読み取り専用）。
       </div>
@@ -220,6 +234,8 @@ const MARGIN = 8;
 const NUM_W = 26;              // 段番号の帯幅
 const LS_AUTOSAVE = "ayagaki-autosave";
 const LS_DESIGNS = "ayagaki-designs";
+const ROWS_MIN = 4, ROWS_MAX = 400;    // 段数の範囲（アプリの BraidSpec.rowRange と同じ）
+const ROW_STEP = 10;                   // 「＋10段 / −10段」で増減する段数
 
 let app = {
   tama: 60,
@@ -425,7 +441,8 @@ let strokeMoved = false;
 let undoStack = [];
 
 function pushUndo() {
-  undoStack.push(JSON.stringify(app.cells));
+  // 段数・玉数も一緒に保存する（段の追加・削除も元に戻せる）
+  undoStack.push(JSON.stringify({ rows: app.rows, tama: app.tama, cells: app.cells }));
   if (undoStack.length > 100) undoStack.shift();
 }
 
@@ -1253,7 +1270,7 @@ function snapshot() {
 }
 function restore(s) {
   app.tama = TAMA_TO_COLS[s.tama] ? s.tama : 60;
-  app.rows = Math.max(4, Math.min(120, s.rows || 40));
+  app.rows = Math.max(ROWS_MIN, Math.min(ROWS_MAX, s.rows || 40));
   app.palette = Array.isArray(s.palette) && s.palette.length === 4 ? s.palette : app.palette;
   app.name = s.name || "";
   app.cells = resizeCells(s.cells, app.rows, cols());
@@ -1290,6 +1307,9 @@ function syncControls() {
   document.getElementById("rowsInp").value = app.rows;
   document.getElementById("symChk").checked = app.sym;
   document.getElementById("nameInp").value = app.name;
+  document.getElementById("rowsPlusBtn").disabled = app.rows >= ROWS_MAX;
+  document.getElementById("rowsMinusBtn").disabled = app.rows <= ROWS_MIN;
+  document.getElementById("rowStepInfo").textContent = `${app.rows}段 / 最大${ROWS_MAX}段`;
   renderPalette();
 }
 
@@ -1309,19 +1329,48 @@ document.getElementById("tamaSel").addEventListener("change", (e) => {
   fullRender(); scheduleAutosave();
 });
 document.getElementById("rowsInp").addEventListener("change", (e) => {
-  const v = Math.max(4, Math.min(120, +e.target.value || 40));
+  const v = Math.max(ROWS_MIN, Math.min(ROWS_MAX, +e.target.value || 40));
   e.target.value = v;
+  setRows(v);
+});
+/* グリッド下端の「＋10段 / −10段」 */
+function setRows(v) {
+  v = Math.max(ROWS_MIN, Math.min(ROWS_MAX, v));
+  if (v === app.rows) return;
   pushUndo();
   app.rows = v;
   app.cells = resizeCells(app.cells, app.rows, cols());
+  syncControls();
   fullRender(); scheduleAutosave();
+}
+/** 消される末尾の段に色があるか */
+function lastRowsHaveColor(n) {
+  const from = Math.max(ROWS_MIN, app.rows - n);
+  for (let r = from; r < app.rows; r++) {
+    for (const side of ["L", "R"]) {
+      for (let d = 0; d < cols(); d++) if (app.cells[side][r][d]) return true;
+    }
+    if (app.cells.C[2 * r] || app.cells.C[2 * r + 1]) return true;
+  }
+  return false;
+}
+document.getElementById("rowsPlusBtn").addEventListener("click", () => setRows(app.rows + ROW_STEP));
+document.getElementById("rowsMinusBtn").addEventListener("click", () => {
+  if (lastRowsHaveColor(ROW_STEP) && !confirm("末尾の段に色があります。10段減らしますか？")) return;
+  setRows(app.rows - ROW_STEP);
 });
+
 document.getElementById("symChk").addEventListener("change", (e) => { app.sym = e.target.checked; });
 document.getElementById("undoBtn").addEventListener("click", () => {
   const s = undoStack.pop();
   if (!s) return;
-  app.cells = resizeCells(JSON.parse(s), app.rows, cols());
-  repaintAll(); scheduleDerived(); scheduleAutosave();
+  const prev = JSON.parse(s);
+  const structural = prev.rows !== app.rows || prev.tama !== app.tama;
+  app.rows = prev.rows; app.tama = prev.tama;
+  app.cells = resizeCells(prev.cells, app.rows, cols());
+  if (structural) { syncControls(); fullRender(); }
+  else { repaintAll(); scheduleDerived(); }
+  scheduleAutosave();
 });
 document.getElementById("clearBtn").addEventListener("click", () => {
   if (!confirm("すべてのマスを消去しますか？")) return;

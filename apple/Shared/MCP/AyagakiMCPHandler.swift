@@ -296,7 +296,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "properties": [
                     "name": ["type": "string", "description": "デザイン名（必須）"],
                     "tama": ["type": "integer", "description": "玉数: 60/68/76/84/92/100（8玉ごとに片面+2目。60=13目, 68=15, 76=17, 84=19, 92=21, 100=23）。省略時 60"],
-                    "rows": ["type": "integer", "description": "段数 4〜120。省略時 40"],
+                    "rows": ["type": "integer", "description": "段数 4〜400。省略時 40"],
                 ],
                 "required": ["name"],
             ],
@@ -310,7 +310,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                     "id": ["type": "string", "description": "デザイン ID（必須）"],
                     "name": ["type": "string", "description": "新しい名前"],
                     "tama": ["type": "integer", "description": "玉数: 60/68/76/84/92/100"],
-                    "rows": ["type": "integer", "description": "段数 4〜120"],
+                    "rows": ["type": "integer", "description": "段数 4〜400"],
                     "palette": ["type": "array", "items": ["type": "string"],
                                 "description": "4 色の #RRGGBB 配列。[0]=地色、[1..3]=柄色"],
                 ],
