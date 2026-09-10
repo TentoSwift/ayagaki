@@ -142,7 +142,7 @@
 <body>
 <header>
   <h1>綾書エディタ</h1>
-  <span class="sub">二枚安田組（60〜100玉）— 模様を塗ると交換記号を自動生成します</span>
+  <span class="sub">二枚安田組 / 二枚高麗組（60〜100玉）— 模様を塗ると交換記号を自動生成します</span>
 </header>
 
 <div class="layout">
@@ -160,6 +160,12 @@
     <div class="card controlsCard">
       <h2>設定・道具</h2>
       <div class="row">
+        <label>組み方
+          <select id="braidSel">
+            <option value="yasuda">二枚安田組</option>
+            <option value="korai">二枚高麗組</option>
+          </select>
+        </label>
         <label>玉数
           <select id="tamaSel">
             <option value="60">60玉（片面13目）</option>
@@ -196,8 +202,10 @@
       <div class="hint">
         マスをタップ / ドラッグで塗ります（「地」で消去）。同じマスをもう一度タップすると消えます。<br>
         グリッドの下の<b>「＋10段」</b>で段を追加できます（最大400段）。「−10段」で末尾の段を減らせます。<br>
-        記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
-        数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。⬆（中央で上ル）は中央の色（d=0）から自動で導出されます（記号表は読み取り専用）。
+        <span id="yasudaHint">記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
+        数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。⬆（中央で上ル）は中央の色（d=0）から自動で導出されます（記号表は読み取り専用）。</span>
+        <span id="braidHint">二枚高麗組（杉綾の目）— <b>綾名</b>：ナミ／上3／上2下1／上1下2／下1上2／下2上1／上下上／下上下。畝 w=1,3,5 の ／ の目（手取り）を内側から読みます。<br>
+        ⬆ は中央の目の色から付きます（<b>暫定規則</b>・書籍と要照合）。糸交換の数字（3.4.5 など）・（下下）（上上）（トリ）・手取り図は未対応です。</span>
       </div>
     </div>
 
@@ -240,6 +248,7 @@ const ROW_STEP = 10;                   // 「＋10段 / −10段」で増減す�
 let app = {
   tama: 60,
   rows: 40,
+  braid: "yasuda",   // "yasuda" = 二枚安田組（菱形の目） / "korai" = 二枚高麗組（杉綾の目）
   palette: ["#dfe6c4", "#a2653a", "#3f5da8", "#c8b23c"],
   paletteNames: ["地", "柄", "柄2", "柄3"],  // 柄色は1つ（UI は先頭2色のみ表示）
   cur: 1,
@@ -249,6 +258,11 @@ let app = {
 };
 
 function cols() { return TAMA_TO_COLS[app.tama]; }
+/* 高麗組の片半面の畝（wale）の本数。60玉（片面13目）＝7本。
+   畝 w の目 k は CellGrid の L/R[k-1][2w] に入る（奇数 d は高麗組では未使用） */
+function wales() { return (cols() + 1) / 2; }
+function isKorai() { return app.braid === "korai"; }
+const BRAID_LABEL = { yasuda: "二枚安田組", korai: "二枚高麗組" };
 
 function emptyCells(rows, n) {
   const mk = () => Array.from({ length: rows }, () => new Array(n).fill(0));
@@ -330,11 +344,71 @@ function bandTransform(x, y, slash) {
   return `translate(${x},${y}) rotate(${slash ? -45 : 45})`;
 }
 
+/* ===== 高麗組（杉綾＝ヘリンボーン）の幾何 =====
+   目は 45° に傾いた 2:1 の長方形（短辺 s = KC*√2、長辺 2s）。
+   各半面は縦の畝（wale）が wales() 本並び、同じ畝の目は縦に積み上がる（ピッチ 2*KC）。
+   右半面は w 奇数（1,3,5）が ／ 向き＝綾（手取り）の目、偶数（0,2,4,6）が ＼ 向き＝糸交換の目。
+   左半面はその鏡像（向きも半段のずれも逆）。
+   目の中心: x = cx ± (1+2w)*KC、y = y0 + (k-1)*2KC - (w-1)*2KC + 半段
+   （右は w 偶数、左は w 奇数のとき +KC）。外側の畝ほど早い段の高さになるので上端が自然に ∨ になる */
+const KC = 8;                       // 畝の間隔の半分
+const K_HALF_LONG = KC * Math.SQRT2;      // 長辺の半分
+const K_HALF_SHORT = K_HALF_LONG / 2;     // 短辺の半分
+const K_REACH = 1.5 * KC;                 // 目が中心から張り出す量（x にも y にも）
+
+function koraiRawY(side, w, k) {
+  const halfStep = side === "R" ? (w % 2 === 0) : (w % 2 === 1);
+  return (k - 1) * 2 * KC - (w - 1) * 2 * KC + (halfStep ? KC : 0);
+}
+function koraiGeo() {
+  const W = wales();
+  const halfWidth = (2 * W - 1) * KC + K_REACH;
+  const cx = MARGIN + NUM_W + halfWidth;
+  let minY = 0, maxY = 0;
+  for (const side of ["L", "R"]) for (let w = 0; w < W; w++) {
+    minY = Math.min(minY, koraiRawY(side, w, 1));
+    maxY = Math.max(maxY, koraiRawY(side, w, app.rows));
+  }
+  const y0 = -minY + K_REACH + MARGIN;
+  return { W, cx, y0, halfWidth,
+           w: 2 * (halfWidth + MARGIN + NUM_W), h: y0 + maxY + K_REACH + MARGIN };
+}
+function koraiCenter(g, side, w, k) {
+  const dx = (1 + 2 * w) * KC;
+  return { x: side === "R" ? g.cx + dx : g.cx - dx, y: g.y0 + koraiRawY(side, w, k) };
+}
+/* 右半面は奇数の畝が ／、左半面はその鏡像 */
+function koraiIsSlash(side, w) { return side === "R" ? w % 2 === 1 : w % 2 === 0; }
+/* CellGrid の列番号（畝 w の目は d = 2w） */
+function koraiColumn(w) { return 2 * w; }
+
+/* 目の輪郭（回転前）。roundOuter = true のとき外側の短辺だけを半円に丸める */
+function koraiTileD(roundOuter, outerSign) {
+  const a = K_HALF_LONG, b = K_HALF_SHORT;
+  if (!roundOuter) return `M${-a},${-b} H${a} V${b} H${-a} Z`;
+  const sx = outerSign >= 0 ? 1 : -1;
+  const ax = sx * (a - b);
+  return `M${-sx * a},${-b} L${ax},${-b} A${b},${b} 0 0 ${sx > 0 ? 1 : 0} ${ax},${b} L${-sx * a},${b} Z`;
+}
+function koraiTransform(x, y, slash) {
+  return `translate(${x},${y}) rotate(${slash ? -45 : 45})`;
+}
+/* 中央のジグザグ（左半面 w=0 の目の右端の角と、右半面 w=0 の目の左端の角を交互に結ぶ）＝左右の継ぎ目 */
+function koraiZigzagPoints(g) {
+  const pts = [];
+  for (let k = 1; k <= app.rows; k++) {
+    pts.push(`${g.cx + KC / 2},${koraiCenter(g, "L", 0, k).y - KC / 2}`);
+    pts.push(`${g.cx - KC / 2},${koraiCenter(g, "R", 0, k).y - KC / 2}`);
+  }
+  return pts;
+}
+
 /* ===== グリッド描画 ===== */
 const gridSvg = document.getElementById("gridSvg");
 let cellIndex = {};  // "side-r-d" -> polygon要素
 
 function renderGrid() {
+  if (isKorai()) return renderKoraiGrid();
   const g = geo();
   gridSvg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
   // 実寸は CSS（width:100% + max-height）に任せ、viewBox で全体を縮小表示する
@@ -413,6 +487,63 @@ function renderGrid() {
   fitGridNumbers();
 }
 
+/* 二枚高麗組のグリッド（杉綾の目）。白い目に細い濃い輪郭・中央のジグザグ・両側に段番号。
+   上端が ∨ になるのは、外側の畝ほど早い段の高さに置かれる幾何から自然に出る */
+function renderKoraiGrid() {
+  const g = koraiGeo();
+  gridSvg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
+  gridSvg.removeAttribute("width");
+  gridSvg.removeAttribute("height");
+  gridSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  gridSvg.style.setProperty("--gridRatio", g.w / g.h);
+  gridSvg.innerHTML = "";
+  cellIndex = {};
+  const frag = document.createDocumentFragment();
+  const NS = "http://www.w3.org/2000/svg";
+
+  for (let k = 1; k <= app.rows; k++) {
+    for (const side of ["L", "R"]) {
+      for (let w = 0; w < g.W; w++) {
+        const c = koraiCenter(g, side, w, k);
+        const d = koraiColumn(w);
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", koraiTileD(w === g.W - 1, side === "R" ? 1 : -1));
+        p.setAttribute("transform", koraiTransform(c.x, c.y, koraiIsSlash(side, w)));
+        p.setAttribute("class", "cell");
+        p.setAttribute("stroke", "#4a4330");
+        p.setAttribute("stroke-width", "0.75");
+        p.dataset.side = side; p.dataset.r = k - 1; p.dataset.d = d;
+        p.setAttribute("fill", app.palette[app.cells[side][k - 1][d]] || app.palette[0]);
+        cellIndex[`${side}-${k - 1}-${d}`] = p;
+        frag.appendChild(p);
+      }
+    }
+    // 段番号（両端。一番外側の目の高さに合わせる）
+    const outerL = koraiCenter(g, "L", g.W - 1, k);
+    const outerR = koraiCenter(g, "R", g.W - 1, k);
+    for (const [x, anchor, y] of [[MARGIN + NUM_W - 6, "end", outerL.y],
+                                  [g.w - MARGIN - NUM_W + 6, "start", outerR.y]]) {
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("x", x); t.setAttribute("y", y + 3);
+      t.setAttribute("text-anchor", anchor);
+      t.setAttribute("class", "num");
+      t.textContent = k;
+      frag.appendChild(t);
+    }
+  }
+  // 中央のジグザグ（左右の半面の継ぎ目）
+  const zig = document.createElementNS(NS, "polyline");
+  zig.setAttribute("points", koraiZigzagPoints(g).join(" "));
+  zig.setAttribute("fill", "none");
+  zig.setAttribute("stroke", "#4a4330");
+  zig.setAttribute("stroke-width", "1.6");
+  zig.setAttribute("stroke-linejoin", "round");
+  zig.setAttribute("pointer-events", "none");
+  frag.appendChild(zig);
+  gridSvg.appendChild(frag);
+  fitGridNumbers();
+}
+
 /* 縮小表示でも段番号が読めるよう、表示倍率に合わせて文字の user unit を補正する */
 function fitGridNumbers() {
   const vb = gridSvg.viewBox.baseVal;
@@ -463,13 +594,14 @@ function paintCell(side, r, d, value) {
   } else {
     if (app.cells[side][r][d] !== v) {
       app.cells[side][r][d] = v; updateCellFill(side, r, d); changed = true;
-      if (d === 0) syncArrowFromCenterColor(side, r);
+      // ⬆ の C 配列は安田組だけが使う（高麗組の ⬆ は中央の目の色から直接導く）
+      if (d === 0 && !isKorai()) syncArrowFromCenterColor(side, r);
     }
     if (app.sym) {
       const other = side === "L" ? "R" : "L";
       if (app.cells[other][r][d] !== v) {
         app.cells[other][r][d] = v; updateCellFill(other, r, d); changed = true;
-        if (d === 0) syncArrowFromCenterColor(other, r);
+        if (d === 0 && !isKorai()) syncArrowFromCenterColor(other, r);
       }
     }
   }
@@ -635,6 +767,39 @@ function ayaName(slots) {
   return runs.map(x => (x.f ? "上" : "下") + x.n).join("");
 }
 function sideTexts(side) { return sideSymbols(side).map(x => x.text); }
+
+/* ===== 二枚高麗組の記号（安田組の sideSymbols には一切触らない別関数） =====
+   段 r の綾名は畝 w=1,3,5 の目を k=r で読む（データ上は app.cells[side][r-1][2w]）。
+   走りが2つなら数字付き（上1下2・上2下1・下1上2・下2上1）、3つなら数字なし（上下上・下上下）、
+   全部上なら 上3、全部下なら ナミ。
+   糸交換の番号（3.4.5・丸数字）と（下下）（上上）（トリ）・手取り図は未対応だが、
+   後から plain / circled に足せるよう安田組の RowSymbol と同じ形で返す */
+function koraiAyaSlots(side, r) {
+  const W = wales(), out = [];
+  for (let w = 1; w < W; w += 2) out.push(app.cells[side][r][koraiColumn(w)] > 0);
+  return out;
+}
+function koraiAyaName(slots) {
+  if (!slots.some(Boolean)) return "ナミ";
+  const runs = [];
+  for (const f of slots) {
+    if (runs.length && runs[runs.length - 1].f === f) runs[runs.length - 1].n++;
+    else runs.push({ f, n: 1 });
+  }
+  if (runs.length >= 3) return runs.map(x => (x.f ? "上" : "下")).join("");
+  return runs.map(x => (x.f ? "上" : "下") + x.n).join("");
+}
+function koraiSideSymbols(side) {
+  const texts = [];
+  for (let r = 0; r < app.rows; r++) {
+    // ⬆ は**暫定規則**: その半面の中央の目（w=0, k=r）に色がある段に付ける。
+    // 書籍（1-4〜1-15）と照合して後で直すこと
+    const rise = (app.cells[side][r][0] || 0) > 0;
+    const aya = koraiAyaName(koraiAyaSlots(side, r)) + (rise ? "⬆" : "");
+    texts.push({ plain: [], circled: [], aya, text: aya, rise });
+  }
+  return texts;
+}
 // sideTexts と同じ計算で、記号文字列に加えて糸交換／戻しの番号も返す（手取り図が使う）。
 // text の内容は従来の記号文字列と完全に同一
 function sideSymbols(side) {
@@ -827,7 +992,8 @@ function sideSymbols(side) {
 const notationDiv = document.getElementById("notation");
 // 全段の記号（構造化データ付き）。段は省略せず1段ずつ
 function notationRows() {
-  const lefts = sideSymbols("L"), rights = sideSymbols("R");
+  const gen = isKorai() ? koraiSideSymbols : sideSymbols;
+  const lefts = gen("L"), rights = gen("R");
   const out = [];
   for (let r = 0; r < app.rows; r++) out.push({ from: r, to: r, L: lefts[r], R: rights[r] });
   return out;
@@ -1141,6 +1307,8 @@ let tedoriRow = null;      // 記号表で選んだ段
 let notationMode = 0;      // 0=記号表（＋選んだ段の手取り図）, 1=手取り図（全段）
 let hiRange = null;        // グリッド上でハイライトし続ける段の範囲
 
+const TD_UNSUPPORTED =
+  `<div class="tdEmpty">手取り図は二枚高麗組には未対応です（書籍 1-4〜1-10 の転記待ち）。</div>`;
 function renderTedori() {
   const n = app.tama / 4;   // N = 片腕の糸数（60玉=15）
   // 表示の切り替え（二重表示にしない）
@@ -1149,6 +1317,12 @@ function renderTedori() {
   tedoriCard.style.display = notationMode === 0 ? "" : "none";
   document.getElementById("modeTableBtn").classList.toggle("on", notationMode === 0);
   document.getElementById("modeTedoriBtn").classList.toggle("on", notationMode === 1);
+
+  if (isKorai()) {
+    tedoriAllDiv.innerHTML = TD_UNSUPPORTED;
+    tedoriDiv.innerHTML = TD_UNSUPPORTED;
+    return;
+  }
 
   if (notationMode === 1) {
     // 全段を上から順に、手順書のように並べる
@@ -1206,6 +1380,7 @@ document.getElementById("modeTedoriBtn").addEventListener("click", () => {
 /* ===== 仕上がりプレビュー ===== */
 const previewSvg = document.getElementById("previewSvg");
 function renderPreview() {
+  if (isKorai()) return renderKoraiPreview();
   const N = cols();
   const S = 5; // プレビューの菱形半径
   const repeats = 2;
@@ -1247,6 +1422,40 @@ function renderPreview() {
   previewSvg.appendChild(frag);
 }
 
+/* 二枚高麗組の仕上がりプレビュー: 杉綾の目を色で塗ったもの（2リピート） */
+function renderKoraiPreview() {
+  const repeats = 2, rows0 = app.rows;
+  const saved = app.rows;
+  app.rows = rows0 * repeats;          // 幾何は段数から寸法を出すので一時的に伸ばす
+  const g = koraiGeo();
+  const scale = 0.55;                  // グリッドより小さく描く
+  previewSvg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
+  previewSvg.setAttribute("width", g.w * scale);
+  previewSvg.setAttribute("height", g.h * scale);
+  previewSvg.innerHTML = "";
+  const NS = "http://www.w3.org/2000/svg";
+  const frag = document.createDocumentFragment();
+  for (let k = 1; k <= rows0 * repeats; k++) {
+    const r = (k - 1) % rows0;
+    for (const side of ["L", "R"]) {
+      for (let w = 0; w < g.W; w++) {
+        const c = koraiCenter(g, side, w, k);
+        let color = app.palette[app.cells[side][r][koraiColumn(w)]] || app.palette[0];
+        if (side === "L") color = shade(color, -6);
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", koraiTileD(w === g.W - 1, side === "R" ? 1 : -1));
+        p.setAttribute("transform", koraiTransform(c.x, c.y, koraiIsSlash(side, w)));
+        p.setAttribute("fill", color);
+        p.setAttribute("stroke", shade(color, -22));
+        p.setAttribute("stroke-width", "0.3");
+        frag.appendChild(p);
+      }
+    }
+  }
+  previewSvg.appendChild(frag);
+  app.rows = saved;
+}
+
 function shade(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
   const f = (v) => Math.max(0, Math.min(255, v + amt));
@@ -1265,11 +1474,12 @@ function scheduleDerived() {
 function snapshot() {
   return {
     v: 1, name: app.name, tama: app.tama, rows: app.rows,
-    palette: app.palette, cells: app.cells,
+    palette: app.palette, cells: app.cells, braidType: app.braid,
   };
 }
 function restore(s) {
   app.tama = TAMA_TO_COLS[s.tama] ? s.tama : 60;
+  app.braid = BRAID_LABEL[s.braidType] ? s.braidType : "yasuda";
   app.rows = Math.max(ROWS_MIN, Math.min(ROWS_MAX, s.rows || 40));
   app.palette = Array.isArray(s.palette) && s.palette.length === 4 ? s.palette : app.palette;
   app.name = s.name || "";
@@ -1303,6 +1513,7 @@ function renderLoadSel() {
 
 /* ===== コントロール ===== */
 function syncControls() {
+  document.getElementById("braidSel").value = app.braid;
   document.getElementById("tamaSel").value = app.tama;
   document.getElementById("rowsInp").value = app.rows;
   document.getElementById("symChk").checked = app.sym;
@@ -1315,13 +1526,20 @@ function syncControls() {
 
 function fullRender() {
   document.getElementById("printTitle").textContent =
-    `綾書 — ${app.tama}玉二枚安田組${app.name ? "「" + app.name + "」" : ""}`;
+    `綾書 — ${app.tama}玉${BRAID_LABEL[app.braid]}${app.name ? "「" + app.name + "」" : ""}`;
+  document.getElementById("braidHint").style.display = isKorai() ? "" : "none";
+  document.getElementById("yasudaHint").style.display = isKorai() ? "none" : "";
   renderGrid();
   renderNotation();
   renderTedori();
   renderPreview();
 }
 
+document.getElementById("braidSel").addEventListener("change", (e) => {
+  pushUndo();
+  app.braid = e.target.value;
+  fullRender(); scheduleAutosave();
+});
 document.getElementById("tamaSel").addEventListener("change", (e) => {
   pushUndo();
   app.tama = +e.target.value;

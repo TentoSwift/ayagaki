@@ -37,6 +37,8 @@ final class PersistenceController {
             attr("tama", .integer16AttributeType, defaultValue: 60),
             attr("rows", .integer16AttributeType, defaultValue: BraidSpec.defaultRows),
             attr("readDir", .stringAttributeType),
+            // 組み方（"yasuda" / "korai"）。既存データは既定値 "yasuda" で軽量マイグレーションされる
+            attr("braidType", .stringAttributeType, defaultValue: BraidType.yasuda.rawValue),
             attr("paletteJSON", .stringAttributeType),
             cells,
             attr("createdAt", .dateAttributeType),
@@ -53,6 +55,9 @@ final class PersistenceController {
 
         if let desc = container.persistentStoreDescriptions.first {
             if inMemory { desc.url = URL(fileURLWithPath: "/dev/null") }
+            // 属性追加は軽量マイグレーションで吸収する（既存データを壊さない）
+            desc.shouldMigrateStoreAutomatically = true
+            desc.shouldInferMappingModelAutomatically = true
             desc.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
             desc.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
             desc.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(

@@ -15,14 +15,17 @@ struct PDFSheetRenderer {
 
     func render() -> Data? {
         let cols = BraidSpec.cols(forTama: snapshot.tama)
+        let braid = snapshot.braid
         let geo = GridGeometry(cols: cols, rows: snapshot.rows, cell: cell)
-        let groups = Notation.groups(cells: snapshot.cells)
+        let koraiGeo = KoraiGeometry(cols: cols, rows: snapshot.rows, c: cell * 0.75)
+        let gridSize = braid == .korai ? koraiGeo.size : geo.size
+        let groups = Notation.groups(cells: snapshot.cells, braid: braid)
 
         let titleH: CGFloat = 34
         let notationW = notationColWidths.rows + 2 * notationColWidths.half
         let notationH = CGFloat(groups.count + 1) * notationRowHeight + 26  // ヘッダ + 凡例
-        let width = margin + geo.size.width + 20 + notationW + margin
-        let height = margin + titleH + max(geo.size.height, notationH) + margin
+        let width = margin + gridSize.width + 20 + notationW + margin
+        let height = margin + titleH + max(gridSize.height, notationH) + margin
 
         let data = NSMutableData()
         guard let consumer = CGDataConsumer(data: data as CFMutableData) else { return nil }
@@ -40,9 +43,13 @@ struct PDFSheetRenderer {
         drawText(title, at: CGPoint(x: margin, y: margin + 16), size: 15, bold: true,
                  color: gray(0.15), ctx: ctx)
 
-        drawGrid(geo: geo, origin: CGPoint(x: margin, y: margin + titleH), ctx: ctx)
-        drawNotation(groups: groups,
-                     origin: CGPoint(x: margin + geo.size.width + 20, y: margin + titleH),
+        if braid == .korai {
+            drawKoraiGrid(geo: koraiGeo, origin: CGPoint(x: margin, y: margin + titleH), ctx: ctx)
+        } else {
+            drawGrid(geo: geo, origin: CGPoint(x: margin, y: margin + titleH), ctx: ctx)
+        }
+        drawNotation(groups: groups, braid: braid,
+                     origin: CGPoint(x: margin + gridSize.width + 20, y: margin + titleH),
                      ctx: ctx)
 
         ctx.endPDFPage()
@@ -105,9 +112,59 @@ struct PDFSheetRenderer {
         ctx.strokePath()
     }
 
+    /// 二枚高麗組のグリッド（杉綾＝ヘリンボーンの目）
+    private func drawKoraiGrid(geo: KoraiGeometry, origin: CGPoint, ctx: CGContext) {
+        let colors = snapshot.palette.map { cgColor(hex: $0) }
+        let line = CGColor(srgbRed: 0x4a / 255.0, green: 0x43 / 255.0, blue: 0x30 / 255.0, alpha: 1)
+
+        for k in 1...max(geo.rows, 1) {
+            for side in [BraidSide.left, .right] {
+                for w in 0..<geo.wales {
+                    let c = geo.center(side: side, w: w, k: k)
+                    let p = CGPoint(x: origin.x + c.x, y: origin.y + c.y)
+                    let v = snapshot.cells.value(side: side, r: k - 1,
+                                                 d: KoraiGeometry.column(forWale: w))
+                    let path = KoraiGeometry.tilePath(
+                        at: p, halfLong: geo.halfLong, halfShort: geo.halfShort,
+                        slash: geo.isSlash(side: side, w: w),
+                        roundOuter: w == geo.wales - 1,
+                        outerSign: side == .right ? 1 : -1)
+                    ctx.beginPath()
+                    ctx.addPath(path)
+                    ctx.setFillColor(colors[min(max(v, 0), colors.count - 1)])
+                    ctx.fillPath()
+                    ctx.beginPath()
+                    ctx.addPath(path)
+                    ctx.setStrokeColor(line)
+                    ctx.setLineWidth(0.5)
+                    ctx.strokePath()
+                }
+            }
+            // 段番号（両端。一番外側の目の高さに合わせる）
+            drawText("\(k)", at: CGPoint(x: origin.x + geo.margin + geo.numW - 6,
+                                         y: origin.y + geo.rowNumberY(side: .left, k: k) + 2.5),
+                     size: 7, bold: false, color: gray(0.45), ctx: ctx, alignRight: true)
+            drawText("\(k)", at: CGPoint(x: origin.x + geo.size.width - geo.margin - geo.numW + 6,
+                                         y: origin.y + geo.rowNumberY(side: .right, k: k) + 2.5),
+                     size: 7, bold: false, color: gray(0.45), ctx: ctx)
+        }
+
+        // 中央のジグザグ（左右の半面の継ぎ目）
+        ctx.beginPath()
+        for (i, pt) in geo.centerZigzagPoints().enumerated() {
+            let p = CGPoint(x: origin.x + pt.x, y: origin.y + pt.y)
+            if i == 0 { ctx.move(to: p) } else { ctx.addLine(to: p) }
+        }
+        ctx.setStrokeColor(line)
+        ctx.setLineWidth(1.2)
+        ctx.setLineJoin(.round)
+        ctx.strokePath()
+    }
+
     // MARK: 記号表
 
-    private func drawNotation(groups: [NotationGroup], origin: CGPoint, ctx: CGContext) {
+    private func drawNotation(groups: [NotationGroup], braid: BraidType,
+                              origin: CGPoint, ctx: CGContext) {
         let (rowsW, halfW) = notationColWidths
         var y = origin.y + 11
 
@@ -129,8 +186,10 @@ struct PDFSheetRenderer {
             hline(at: y, from: origin.x, width: rowsW + 2 * halfW, ctx: ctx)
         }
 
-        drawText("綾名：ナミ／上a下b…（合計6）の手取り ／ 先頭の数字：糸交換（上下段の糸を入れかえる位置）／ 丸数字：入れかえて元の色に戻す",
-                 at: CGPoint(x: origin.x, y: y + 16), size: 7, bold: false,
+        let legend = braid == .korai
+            ? "綾名：ナミ／上3・上2下1・上下上…（畝 w=1,3,5 の目を内側から読む）／ ⬆ は中央の目の色から（暫定）"
+            : "綾名：ナミ／上a下b…（合計6）の手取り ／ 先頭の数字：糸交換（上下段の糸を入れかえる位置）／ 丸数字：入れかえて元の色に戻す"
+        drawText(legend, at: CGPoint(x: origin.x, y: y + 16), size: 7, bold: false,
                  color: gray(0.45), ctx: ctx)
     }
 

@@ -47,7 +47,7 @@ final class DesignStore: @unchecked Sendable {
     func notation(id: String) throws -> [String: Any] {
         try context.performAndWait {
             let s = try find(id).snapshot
-            return ["rows": s.rows, "notation": notationRows(s)]
+            return ["rows": s.rows, "braidType": s.braidType, "notation": notationRows(s)]
         }
     }
 
@@ -61,8 +61,11 @@ final class DesignStore: @unchecked Sendable {
 
     // MARK: - 作成・更新
 
-    func create(name: String, tama: Int?, rows: Int?) throws -> [String: Any] {
+    func create(name: String, tama: Int?, rows: Int?, braidType: String?) throws -> [String: Any] {
         try context.performAndWait {
+            if let braidType, BraidType(rawValue: braidType) == nil {
+                throw StoreError("braidType は yasuda / korai を指定してください")
+            }
             let design = Design(context: context)
             design.apply(snapshot: DesignSnapshot(
                 name: name,
@@ -70,14 +73,15 @@ final class DesignStore: @unchecked Sendable {
                 rows: rows ?? BraidSpec.defaultRows,
                 palette: BraidSpec.defaultPalette,
                 cells: .empty(rows: rows ?? BraidSpec.defaultRows,
-                              cols: BraidSpec.cols(forTama: tama ?? 60))))
+                              cols: BraidSpec.cols(forTama: tama ?? 60)),
+                braidType: BraidType.from(braidType).rawValue))
             try saveAndNotify(design)
             return summary(of: design)
         }
     }
 
     func update(id: String, name: String?, tama: Int?, rows: Int?,
-                palette: [String]?) throws -> [String: Any] {
+                palette: [String]?, braidType: String?) throws -> [String: Any] {
         try context.performAndWait {
             let design = try find(id)
             var s = design.snapshot
@@ -97,6 +101,12 @@ final class DesignStore: @unchecked Sendable {
             if let palette {
                 guard palette.count == 4 else { throw StoreError("palette は 4 色（#RRGGBB）の配列です") }
                 s.palette = palette
+            }
+            if let braidType {
+                guard let b = BraidType(rawValue: braidType) else {
+                    throw StoreError("braidType は yasuda / korai を指定してください")
+                }
+                s.braidType = b.rawValue
             }
             design.apply(snapshot: s)
             try saveAndNotify(design)
@@ -127,7 +137,7 @@ final class DesignStore: @unchecked Sendable {
                 }
             }
             var derivedC = cellsC
-            if derivedC == nil {
+            if derivedC == nil && s.braid == .yasuda {
                 // C 未指定なら中央の2列（d=0）の色から ⬆ を導出（左の色→右半面。左半面は1段前）
                 var c = [Int](repeating: 0, count: s.rows * 2)
                 for r in 0..<s.rows {
@@ -183,7 +193,10 @@ final class DesignStore: @unchecked Sendable {
                     for r in (rowFrom - 1)...(rowTo - 1) {
                         for pos in posFrom...posTo {
                             s.cells.set(side: side, r: r, d: pos - 1, to: color)
-                            if pos == 1 { s.cells.syncArrowFromCenterColor(side: side, row: r) }
+                            // ⬆ の C 配列は安田組だけが使う（高麗組は中央の目の色から直接導く）
+                            if pos == 1 && s.braid == .yasuda {
+                                s.cells.syncArrowFromCenterColor(side: side, row: r)
+                            }
                         }
                     }
                 }
@@ -240,12 +253,14 @@ final class DesignStore: @unchecked Sendable {
             "tama": Int(design.tama),
             "rows": Int(design.rows),
             "colsPerSide": BraidSpec.cols(forTama: Int(design.tama)),
+            "braidType": BraidType.from(design.braidType).rawValue,
+            "walesPerSide": BraidSpec.wales(forTama: Int(design.tama)),
             "updatedAt": design.updatedAt.map { iso.string(from: $0) } ?? "",
         ]
     }
 
     private func notationRows(_ s: DesignSnapshot) -> [[String: Any]] {
-        return Notation.groups(cells: s.cells).map {
+        return Notation.groups(cells: s.cells, braid: s.braid).map {
             ["rows": $0.label, "left": $0.left, "right": $0.right]
         }
     }

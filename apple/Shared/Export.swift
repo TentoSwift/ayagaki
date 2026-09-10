@@ -32,7 +32,7 @@ struct PDFFile: FileDocument {
 // MARK: - PDF 手順書（CoreGraphics 直描き — GUI のない stdio MCP プロセスでも動く）
 
 func pdfTitle(for snapshot: DesignSnapshot, name: String) -> String {
-    let base = "綾書 — \(snapshot.tama)玉二枚安田組"
+    let base = "綾書 — \(snapshot.tama)玉\(snapshot.braid.label)"
     return (name.isEmpty || name == "無題") ? base : base + "「\(name)」"
 }
 

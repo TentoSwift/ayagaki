@@ -9,11 +9,16 @@ struct GridCanvasView: View {
     var scale: CGFloat = 1
 
     var body: some View {
-        let geo = GridGeometry(cols: vm.cols, rows: vm.rowCount, scale: scale)
+        let geo = AyagakiGeometry(braid: vm.braid, cols: vm.cols, rows: vm.rowCount, scale: scale)
         Canvas { ctx, _ in
-            Self.draw(ctx: ctx, geo: geo,
-                      cells: vm.cells, palette: vm.palette,
-                      highlighted: interactive ? vm.highlighted : nil)
+            switch geo {
+            case .yasuda(let g):
+                Self.draw(ctx: ctx, geo: g, cells: vm.cells, palette: vm.palette,
+                          highlighted: interactive ? vm.highlighted : nil)
+            case .korai(let g):
+                Self.drawKorai(ctx: ctx, geo: g, cells: vm.cells, palette: vm.palette,
+                               highlighted: interactive ? vm.highlighted : nil)
+            }
         }
         .frame(width: geo.size.width, height: geo.size.height)
         .contentShape(Rectangle())
@@ -36,12 +41,14 @@ struct GridCanvasView: View {
         }
     }
 
+    /// 糸の輪郭（濃い茶灰色）
+    static let gridLine = Color(red: 0x4a / 255.0, green: 0x43 / 255.0, blue: 0x30 / 255.0)
+
     static func draw(ctx: GraphicsContext, geo: GridGeometry,
                      cells: CellGrid, palette: [String],
                      highlighted: ClosedRange<Int>?) {
         let colors = palette.map { Color(hex: $0) }
-        // 糸の輪郭（濃い茶灰色）
-        let gridLine = Color(red: 0x4a / 255.0, green: 0x43 / 255.0, blue: 0x30 / 255.0)
+        let gridLine = Self.gridLine
         // 縮小時も見えるよう、線幅と段番号の文字は下限を設ける
         let s = geo.scale
         let edgeW = max(0.35, 0.6 * s)
@@ -75,6 +82,48 @@ struct GridCanvasView: View {
             ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + max(2, 6 * s), y: yRight), anchor: .leading)
         }
         // 中央のジグザグ
+        ctx.stroke(geo.centerZigzagPath(), with: .color(gridLine), lineWidth: zigW)
+    }
+
+    /// 二枚高麗組（杉綾＝ヘリンボーンの目）。白い目に細い濃い輪郭・中央のジグザグ・両側に段番号。
+    /// 上端が ∨ になるのは、外側の畝ほど早い段の高さに置かれる幾何から自然に出る
+    static func drawKorai(ctx: GraphicsContext, geo: KoraiGeometry,
+                          cells: CellGrid, palette: [String],
+                          highlighted: ClosedRange<Int>?) {
+        let colors = palette.map { Color(hex: $0) }
+        let gridLine = Self.gridLine
+        let s = geo.scale
+        let edgeW = max(0.35, 0.7 * s)
+        let hiW = max(0.9, 1.4 * s)
+        let zigW = max(0.9, 1.6 * s)
+        let numSize = max(7, 9 * s)
+
+        for k in 1...max(geo.rows, 1) {
+            for side in [BraidSide.left, .right] {
+                for w in 0..<geo.wales {
+                    let path = geo.tilePath(side: side, w: w, k: k)
+                    let v = cells.value(side: side, r: k - 1,
+                                        d: KoraiGeometry.column(forWale: w))
+                    ctx.fill(path, with: .color(colors[min(max(v, 0), colors.count - 1)]))
+                    ctx.stroke(path, with: .color(gridLine), lineWidth: edgeW)
+                }
+            }
+            if let hi = highlighted, hi.contains(k - 1) {
+                for side in [BraidSide.left, .right] {
+                    for w in 0..<geo.wales {
+                        ctx.stroke(geo.tilePath(side: side, w: w, k: k),
+                                   with: .color(.red), lineWidth: hiW)
+                    }
+                }
+            }
+            // 段番号（両端。一番外側の目の高さに合わせる）
+            let num = Text("\(k)").font(.system(size: numSize)).foregroundColor(.secondary)
+            ctx.draw(num, at: CGPoint(x: geo.margin + geo.numW - max(2, 6 * s),
+                                      y: geo.rowNumberY(side: .left, k: k)), anchor: .trailing)
+            ctx.draw(num, at: CGPoint(x: geo.size.width - geo.margin - geo.numW + max(2, 6 * s),
+                                      y: geo.rowNumberY(side: .right, k: k)), anchor: .leading)
+        }
+        // 中央のジグザグ（左右の半面の継ぎ目）
         ctx.stroke(geo.centerZigzagPath(), with: .color(gridLine), lineWidth: zigW)
     }
 }

@@ -10,6 +10,8 @@ final class EditorViewModel: ObservableObject {
     @Published var rowCount: Int
     @Published var cells: CellGrid
     @Published var palette: [String]
+    /// 組み方（二枚安田組 / 二枚高麗組）
+    @Published var braid: BraidType
     @Published var currentColor: Int = 1
     @Published var symmetric: Bool = false
     @Published var highlighted: ClosedRange<Int>? = nil
@@ -19,6 +21,7 @@ final class EditorViewModel: ObservableObject {
         var cells: CellGrid
         var rows: Int
         var tama: Int
+        var braid: BraidType
     }
     private var undoStack: [UndoEntry] = []
     private var strokeActive = false
@@ -31,9 +34,9 @@ final class EditorViewModel: ObservableObject {
 
     var cols: Int { BraidSpec.cols(forTama: tama) }
     var canUndo: Bool { !undoStack.isEmpty }
-    var notationGroups: [NotationGroup] { Notation.groups(cells: cells) }
+    var notationGroups: [NotationGroup] { Notation.groups(cells: cells, braid: braid) }
     /// 手取り図の全段表示用（同じ記号が続く段はまとめる）
-    var tedoriGroups: [NotationGroup] { Notation.tedoriGroups(cells: cells) }
+    var tedoriGroups: [NotationGroup] { Notation.tedoriGroups(cells: cells, braid: braid) }
 
     private var externalChangeObserver: NSObjectProtocol?
 
@@ -45,6 +48,7 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         cells = s.cells
         palette = s.palette
+        braid = s.braid
 
         // MCP サーバなど外部からの変更を画面に反映する
         let objectID = design.objectID
@@ -69,11 +73,12 @@ final class EditorViewModel: ObservableObject {
         rowCount = s.rows
         cells = s.cells
         palette = s.palette
+        braid = s.braid
     }
 
     var snapshotValue: DesignSnapshot {
         DesignSnapshot(name: design.name ?? "", tama: tama, rows: rowCount,
-                       palette: palette, cells: cells)
+                       palette: palette, cells: cells, braidType: braid.rawValue)
     }
 
     // MARK: 塗り
@@ -84,7 +89,7 @@ final class EditorViewModel: ObservableObject {
         (selected != 0 && current == selected) ? 0 : selected
     }
 
-    func strokeChanged(at point: CGPoint, geometry: GridGeometry) {
+    func strokeChanged(at point: CGPoint, geometry: AyagakiGeometry) {
         guard let hit = geometry.hitTest(point) else { return }
         if !strokeActive {
             strokeActive = true
@@ -113,7 +118,7 @@ final class EditorViewModel: ObservableObject {
         scheduleSave()
     }
 
-    func tap(at point: CGPoint, geometry: GridGeometry) {
+    func tap(at point: CGPoint, geometry: AyagakiGeometry) {
         guard let hit = geometry.hitTest(point) else { return }
         pushUndo()
         let v = Self.toggledValue(current: value(side: hit.side, r: hit.r, d: hit.d),
@@ -142,26 +147,29 @@ final class EditorViewModel: ObservableObject {
         }
         guard r >= 0, r < rowCount else { return }
         guard d >= 0, d < cols else { return }
+        // ⬆ の C 配列は安田組だけが使う（高麗組の ⬆ は中央の目の色から直接導く）
+        let syncsArrow = braid == .yasuda
         if cells.value(side: side, r: r, d: d) != v {
             cells.set(side: side, r: r, d: d, to: v)
-            if d == 0 { cells.syncArrowFromCenterColor(side: side, row: r) }
+            if d == 0 && syncsArrow { cells.syncArrowFromCenterColor(side: side, row: r) }
         }
         if symmetric, cells.value(side: side.opposite, r: r, d: d) != v {
             cells.set(side: side.opposite, r: r, d: d, to: v)
-            if d == 0 { cells.syncArrowFromCenterColor(side: side.opposite, row: r) }
+            if d == 0 && syncsArrow { cells.syncArrowFromCenterColor(side: side.opposite, row: r) }
         }
     }
 
     // MARK: 元に戻す・全消去
 
     private func pushUndo() {
-        undoStack.append(UndoEntry(cells: cells, rows: rowCount, tama: tama))
+        undoStack.append(UndoEntry(cells: cells, rows: rowCount, tama: tama, braid: braid))
         if undoStack.count > 100 { undoStack.removeFirst() }
     }
 
     func undo() {
         guard let prev = undoStack.popLast() else { return }
         tama = prev.tama
+        braid = prev.braid
         rowCount = prev.rows
         cells = prev.cells.resized(rows: rowCount, cols: cols)
         highlighted = nil
@@ -181,6 +189,14 @@ final class EditorViewModel: ObservableObject {
         pushUndo()
         tama = t
         cells = cells.resized(rows: rowCount, cols: cols)
+        scheduleSave()
+    }
+
+    /// 組み方を切り替える（塗りはそのまま。高麗組は L/R の偶数列だけを使う）
+    func setBraid(_ b: BraidType) {
+        guard b != braid else { return }
+        pushUndo()
+        braid = b
         scheduleSave()
     }
 
@@ -231,6 +247,7 @@ final class EditorViewModel: ObservableObject {
         tama = s.tama
         rowCount = s.rows
         palette = s.palette
+        braid = s.braid
         cells = s.cells
         if !s.name.isEmpty { design.name = s.name }
         scheduleSave()

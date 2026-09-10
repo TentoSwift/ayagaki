@@ -452,6 +452,15 @@ struct TedoriHalfView: View {
 
 // MARK: - 全段の手取り図（記号表の全体を手順書として並べる）
 
+/// 高麗組は手取り図が未対応（書籍 1-4〜1-10 の転記待ち）
+struct TedoriUnsupportedView: View {
+    var body: some View {
+        Text("手取り図は二枚高麗組には未対応です（書籍 1-4〜1-10 の転記待ち）。")
+            .font(.caption)
+            .foregroundColor(.secondary)
+    }
+}
+
 struct TedoriListView: View {
     @ObservedObject var vm: EditorViewModel
     var unit: CGFloat = 16
@@ -459,6 +468,14 @@ struct TedoriListView: View {
     private var threads: Int { vm.tama / 4 }
 
     var body: some View {
+        if vm.braid == .korai {
+            TedoriUnsupportedView()
+        } else {
+            list
+        }
+    }
+
+    private var list: some View {
         LazyVStack(alignment: .leading, spacing: 16) {
             ForEach(vm.tedoriGroups) { g in
                 VStack(alignment: .leading, spacing: 6) {
@@ -494,7 +511,9 @@ struct TedoriPanel: View {
 
     var body: some View {
         Group {
-            if let row = selectedRow {
+            if vm.braid == .korai {
+                TedoriUnsupportedView()
+            } else if let row = selectedRow {
                 let groups = vm.notationGroups
                 let g = row < groups.count ? groups[row] : NotationGroup(from: row, to: row, left: "", right: "")
                 VStack(alignment: .leading, spacing: 12) {

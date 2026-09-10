@@ -7,6 +7,7 @@ public class Design: NSManagedObject, Identifiable {
     @NSManaged public var tama: Int16
     @NSManaged public var rows: Int16
     @NSManaged public var readDir: String?
+    @NSManaged public var braidType: String?
     @NSManaged public var paletteJSON: String?
     @NSManaged public var cellsData: Data?
     @NSManaged public var createdAt: Date?
@@ -38,7 +39,8 @@ extension Design {
             palette = decoded
         }
         return DesignSnapshot(name: name ?? "", tama: Int(tama),
-                              rows: rowCount, palette: palette, cells: cells)
+                              rows: rowCount, palette: palette, cells: cells,
+                              braidType: BraidType.from(braidType).rawValue)
             .normalized()
     }
 
@@ -48,6 +50,7 @@ extension Design {
         name = s.name
         tama = Int16(s.tama)
         rows = Int16(s.rows)
+        braidType = s.braidType
         paletteJSON = (try? JSONEncoder().encode(s.palette)).flatMap { String(data: $0, encoding: .utf8) }
         cellsData = try? JSONEncoder().encode(s.cells)
         updatedAt = Date()

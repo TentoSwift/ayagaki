@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """綾書記号の回帰テスト。書籍 4-15「四角」の4例（docs/notation-reference.md）と
 stdio MCP 経由で突き合わせる。要: /Applications/Ayagaki.app"""
-import json, subprocess, sys
+import json, os, subprocess, sys
 
-BIN = "/Applications/Ayagaki.app/Contents/MacOS/Ayagaki"
+# 検証したいビルドを AYAGAKI_BIN で差し替えられる
+# （例: apple/macbuild/Build/Products/Release/Ayagaki.app/Contents/MacOS/Ayagaki）
+BIN = os.environ.get("AYAGAKI_BIN", "/Applications/Ayagaki.app/Contents/MacOS/Ayagaki")
 
 def mcp(requests):
     lines = [json.dumps({"jsonrpc":"2.0","id":0,"method":"initialize",

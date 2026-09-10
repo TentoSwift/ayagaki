@@ -118,7 +118,12 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 "capabilities": ["tools": [String: Any]()],
                 "serverInfo": ["name": Self.serverName, "version": Self.serverVersion],
                 "instructions": """
-                組紐（二枚安田組）の綾書デザインを読み書きするサーバです。
+                組紐（二枚安田組 / 二枚高麗組）の綾書デザインを読み書きするサーバです。
+                braidType でデザインごとに組み方を選びます（"yasuda"=二枚安田組・既定、"korai"=二枚高麗組）。
+                高麗組は杉綾（ヘリンボーン）の目で、片半面の畝（wale）は walesPerSide 本（60玉=7本）。
+                **畝 w の目 k は L/R[k-1][2w]**（paint の pos = 2w+1、つまり奇数の pos）に入り、偶数の pos は未使用です。
+                段 r の綾名は畝 w=1,3,5（pos=3,7,11）の目を k=r で読み、⬆ は中央の目（w=0, pos=1）の色から付きます（暫定規則）。
+                高麗組の記号は「綾名＋⬆」のみ（糸交換の数字・(下下)(上上)(トリ)・手取り図は未対応）。C 配列は高麗組では使いません。
                 グリッド構造: 左右 2 半面 × rows 段 × 片面 colsPerSide 目（8玉ごとに +2目。60玉=13目、68=15、76=17、84=19、92=21、100=23）＋ 中央の上ル目 C（各段2目: index 2r=右半面、2r+1=左半面。塗るとその段の記号に ⬆=中央で上ル が付く）。
                 セル値: 0=地（ナミ）、1=柄色（柄は1つ）。paint の pos は綾書定規の目盛りと同じで 1=中央 … colsPerSide=外端。
                 模様は両端の目（pos=colsPerSide）にかからないようにするのが定石。
@@ -173,7 +178,8 @@ final class AyagakiMCPHandler: @unchecked Sendable {
             return try store.create(
                 name: name,
                 tama: arguments["tama"] as? Int,
-                rows: arguments["rows"] as? Int)
+                rows: arguments["rows"] as? Int,
+                braidType: arguments["braidType"] as? String)
 
         case "update_design":
             return try store.update(
@@ -181,7 +187,8 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                 name: arguments["name"] as? String,
                 tama: arguments["tama"] as? Int,
                 rows: arguments["rows"] as? Int,
-                palette: arguments["palette"] as? [String])
+                palette: arguments["palette"] as? [String],
+                braidType: arguments["braidType"] as? String)
 
         case "paint":
             guard let ops = arguments["ops"] as? [[String: Any]], !ops.isEmpty else {
@@ -276,7 +283,7 @@ final class AyagakiMCPHandler: @unchecked Sendable {
     static let toolDefinitions: [[String: Any]] = [
         [
             "name": "list_designs",
-            "description": "綾書デザインの一覧を取得する。各デザインの id・名前・玉数・段数・片面の目数・更新日時を返す。",
+            "description": "綾書デザインの一覧を取得する。各デザインの id・名前・玉数・段数・片面の目数・組み方（braidType）・更新日時を返す。",
             "inputSchema": ["type": "object", "properties": [String: Any](), "required": [String]()],
         ],
         [
@@ -297,6 +304,8 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                     "name": ["type": "string", "description": "デザイン名（必須）"],
                     "tama": ["type": "integer", "description": "玉数: 60/68/76/84/92/100（8玉ごとに片面+2目。60=13目, 68=15, 76=17, 84=19, 92=21, 100=23）。省略時 60"],
                     "rows": ["type": "integer", "description": "段数 4〜400。省略時 40"],
+                    "braidType": ["type": "string", "enum": ["yasuda", "korai"],
+                                  "description": "組み方: yasuda=二枚安田組（菱形の目）/ korai=二枚高麗組（杉綾の目）。省略時 yasuda"],
                 ],
                 "required": ["name"],
             ],
@@ -313,6 +322,8 @@ final class AyagakiMCPHandler: @unchecked Sendable {
                     "rows": ["type": "integer", "description": "段数 4〜400"],
                     "palette": ["type": "array", "items": ["type": "string"],
                                 "description": "4 色の #RRGGBB 配列。[0]=地色、[1..3]=柄色"],
+                    "braidType": ["type": "string", "enum": ["yasuda", "korai"],
+                                  "description": "組み方: yasuda=二枚安田組 / korai=二枚高麗組"],
                 ],
                 "required": ["id"],
             ],

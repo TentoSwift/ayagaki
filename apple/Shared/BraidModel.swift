@@ -16,6 +16,24 @@ enum BraidSide: String, Codable {
     }
 }
 
+/// 組み方（デザインごとに選ぶ）。既定は二枚安田組。
+enum BraidType: String, Codable, CaseIterable {
+    case yasuda = "yasuda"   // 二枚安田組（菱形の目）
+    case korai = "korai"     // 二枚高麗組（杉綾＝ヘリンボーンの目）
+
+    var label: String {
+        switch self {
+        case .yasuda: return "二枚安田組"
+        case .korai: return "二枚高麗組"
+        }
+    }
+
+    /// 未知の文字列は安田組として扱う（古いデータ・古い JSON との互換）
+    static func from(_ raw: String?) -> BraidType {
+        BraidType(rawValue: raw ?? "") ?? .yasuda
+    }
+}
+
 enum BraidSpec {
     /// 玉数 → 片面の目数（書籍 4-10/4-11 の綾書定規の目盛り）。
     /// 60玉=13目 を基点に 8玉ごとに +2目（68=15, 76=17, 84=19, 92=21, 100=23）
@@ -23,6 +41,11 @@ enum BraidSpec {
         let t = tamaOptions.contains(tama) ? tama : 60
         return 13 + (t - 60) / 4
     }
+
+    /// 高麗組（杉綾）の片半面の畝（wale）の本数。60玉（片面13目）＝7本。
+    /// 目は畝 w の通し番号 k として CellGrid の L/R[k-1][2w] に入る（奇数 d は未使用）
+    static func wales(forCols cols: Int) -> Int { (cols + 1) / 2 }
+    static func wales(forTama tama: Int) -> Int { wales(forCols: cols(forTama: tama)) }
     static let tamaOptions = [60, 68, 76, 84, 92, 100]
     static let rowRange = 4...400
     static let defaultRows = 40
@@ -121,6 +144,10 @@ struct DesignSnapshot: Codable {
     var rows: Int
     var palette: [String]
     var cells: CellGrid
+    /// 組み方（"yasuda" | "korai"）。古い JSON には無いので既定は安田組
+    var braidType: String = BraidType.yasuda.rawValue
+
+    var braid: BraidType { BraidType.from(braidType) }
 
     /// 値を仕様範囲に正規化して返す
     func normalized() -> DesignSnapshot {
@@ -128,8 +155,24 @@ struct DesignSnapshot: Codable {
         s.tama = BraidSpec.tamaOptions.contains(tama) ? tama : 60
         s.rows = min(BraidSpec.rowRange.upperBound, max(BraidSpec.rowRange.lowerBound, rows))
         if s.palette.count != 4 { s.palette = BraidSpec.defaultPalette }
+        s.braidType = BraidType.from(braidType).rawValue
         s.cells = cells.resized(rows: s.rows, cols: BraidSpec.cols(forTama: s.tama))
         return s
+    }
+}
+
+extension DesignSnapshot {
+    /// braidType が無い古い JSON も読めるようにする（メンバーワイズ init を残すため extension で定義）
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        v = try c.decodeIfPresent(Int.self, forKey: .v) ?? 1
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        tama = try c.decodeIfPresent(Int.self, forKey: .tama) ?? 60
+        rows = try c.decodeIfPresent(Int.self, forKey: .rows) ?? BraidSpec.defaultRows
+        palette = try c.decodeIfPresent([String].self, forKey: .palette) ?? BraidSpec.defaultPalette
+        cells = try c.decode(CellGrid.self, forKey: .cells)
+        braidType = try c.decodeIfPresent(String.self, forKey: .braidType)
+            ?? BraidType.yasuda.rawValue
     }
 }
 
@@ -443,8 +486,55 @@ enum Notation {
         return texts
     }
 
+    // MARK: - 二枚高麗組（杉綾の目）
+
+    /// 高麗組の綾（手取り）の目＝奇数の畝 w=1,3,5…（データ上は d=2w）。内側から順に並べる。
+    /// true = 色付き（上）／false = 白（下）
+    static func koraiAyaSlots(rowCells: [Int]) -> [Bool] {
+        let wales = BraidSpec.wales(forCols: rowCells.count)
+        return stride(from: 1, to: wales, by: 2).map { rowCells[2 * $0] > 0 }
+    }
+
+    /// 高麗組の綾名。走りが2つなら数字付き（上1下2・上2下1・下1上2・下2上1）、
+    /// 3つなら数字なし（上下上・下上下）、全部上なら 上3、全部下なら ナミ
+    static func koraiAyaName(_ slots: [Bool]) -> String {
+        guard slots.contains(true) else { return "ナミ" }
+        var runs: [(flag: Bool, n: Int)] = []
+        for f in slots {
+            if let last = runs.last, last.flag == f { runs[runs.count - 1].n += 1 }
+            else { runs.append((f, 1)) }
+        }
+        if runs.count >= 3 { return runs.map { $0.flag ? "上" : "下" }.joined() }
+        return runs.map { ($0.flag ? "上" : "下") + "\($0.n)" }.joined()
+    }
+
+    /// 高麗組の片面の全段の記号。安田組の生成（sideSymbols）には一切触らない別関数。
+    /// 現状は「綾名 ＋ ⬆」だけ。糸交換の番号（3.4.5・丸数字）と（下下）（上上）（トリ）は未対応だが、
+    /// RowSymbol の plain / circled に後から足せるよう同じ構造で返す。
+    ///
+    /// 段 r の綾名は、畝 w=1,3,5 の目を k=r で読む（データ上は plane[r-1][2w]）。
+    /// ⬆ は**暫定規則**: その半面の中央の目（w=0, k=r）に色がある段に付ける。
+    /// 書籍（1-4〜1-15）と照合して後で直すこと。
+    static func koraiSideSymbols(_ plane: [[Int]]) -> [RowSymbol] {
+        plane.map { row in
+            let slots = koraiAyaSlots(rowCells: row)
+            // 暫定: 中央の目（w=0）の色をそのままその段の ⬆ とする
+            let rise = (row.first ?? 0) > 0
+            let aya = koraiAyaName(slots) + (rise ? "⬆" : "")
+            return RowSymbol(plain: [], circled: [], aya: aya, text: aya, rise: rise)
+        }
+    }
+
     /// 全段を生成する（段は省略せず1段ずつ）
-    static func groups(cells: CellGrid) -> [NotationGroup] {
+    static func groups(cells: CellGrid, braid: BraidType = .yasuda) -> [NotationGroup] {
+        if braid == .korai {
+            let lefts = koraiSideSymbols(cells.L)
+            let rights = koraiSideSymbols(cells.R)
+            return (0..<lefts.count).map {
+                NotationGroup(from: $0, to: $0, left: lefts[$0].text, right: rights[$0].text,
+                              leftSymbol: lefts[$0], rightSymbol: rights[$0])
+            }
+        }
         let rows = cells.L.count
         let arrowsL = (0..<rows).map { cells.hasArrow(side: .left, row: $0) }
         let arrowsR = (0..<rows).map { cells.hasArrow(side: .right, row: $0) }
@@ -461,9 +551,9 @@ enum Notation {
     }
 
     /// 手取り図の全段表示用。同じ記号（かつ同じ塗り）が続く段をまとめる（label は「3」「4〜6」）
-    static func tedoriGroups(cells: CellGrid) -> [NotationGroup] {
+    static func tedoriGroups(cells: CellGrid, braid: BraidType = .yasuda) -> [NotationGroup] {
         var out: [NotationGroup] = []
-        for g in groups(cells: cells) {
+        for g in groups(cells: cells, braid: braid) {
             if var last = out.last, last.left == g.left, last.right == g.right,
                cells.L[last.from] == cells.L[g.from], cells.R[last.from] == cells.R[g.from] {
                 last.to = g.to

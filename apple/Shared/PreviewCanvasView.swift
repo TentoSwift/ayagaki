@@ -7,6 +7,35 @@ struct PreviewCanvasView: View {
     var repeats = 2
 
     var body: some View {
+        if vm.braid == .korai { koraiBody } else { yasudaBody }
+    }
+
+    /// 二枚高麗組: 杉綾の目を色で塗ったもの（輪郭は薄く）
+    private var koraiBody: some View {
+        let geo = KoraiGeometry(cols: vm.cols, rows: vm.rowCount * repeats,
+                               c: cellRadius * 0.8, numW: 0, margin: 2)
+        return Canvas { ctx, _ in
+            let colors = vm.palette.map { Color(hex: $0) }
+            for k in 1...max(geo.rows, 1) {
+                let r = (k - 1) % vm.rowCount
+                for side in [BraidSide.left, .right] {
+                    for w in 0..<geo.wales {
+                        let path = geo.tilePath(side: side, w: w, k: k)
+                        var color = colors[min(max(vm.cells.value(
+                            side: side, r: r, d: KoraiGeometry.column(forWale: w)), 0),
+                                               colors.count - 1)]
+                        // 糸の向きによる艶の違いを簡易表現
+                        if side == .left { color = color.shaded(by: -6) }
+                        ctx.fill(path, with: .color(color))
+                        ctx.stroke(path, with: .color(color.shaded(by: -22)), lineWidth: 0.3)
+                    }
+                }
+            }
+        }
+        .frame(width: geo.size.width, height: geo.size.height)
+    }
+
+    private var yasudaBody: some View {
         let n = vm.cols
         let s = cellRadius
         let totalRows = vm.rowCount * repeats
@@ -15,7 +44,7 @@ struct PreviewCanvasView: View {
         let size = CGSize(width: CGFloat(2 * n + 1) * s + 8,
                           height: y0 + CGFloat(totalRows - 1) * 2 * s + 2 * s + 4)
 
-        Canvas { ctx, _ in
+        return Canvas { ctx, _ in
             let colors = vm.palette.map { Color(hex: $0) }
 
             func diamond(_ x: CGFloat, _ y: CGFloat, _ color: Color) {

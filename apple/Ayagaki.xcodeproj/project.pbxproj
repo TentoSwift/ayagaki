@@ -9,7 +9,9 @@
 /* Begin PBXBuildFile section */
 		066CC8325F0F75505BEE2042 /* PreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC71276FD616872EC1B1ADE /* PreviewCanvasView.swift */; };
 		1DF4932FA35FC861BABBEBB0 /* TedoriView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C329D28294BDC32DE4CEE75 /* TedoriView.swift */; };
+		22258CD4D58ED52A74CA13DF /* KoraiGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A1BEA39284F325EBC4E7E8 /* KoraiGeometry.swift */; };
 		235A8BC183FA9C241A3B0FD5 /* ColorUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */; };
+		24CA39F16A7DAA4CA8EBFFB3 /* KoraiGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A1BEA39284F325EBC4E7E8 /* KoraiGeometry.swift */; };
 		385CE4602E7A6D7C967F5C89 /* ColorUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AD2F7AB7027316B7F054E4 /* ColorUtil.swift */; };
 		5186F0D9B03632DABA8103D4 /* Design+CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F5F78F5BE4D151C6B0273 /* Design+CoreData.swift */; };
 		5A5B8843346084FC27119217 /* AyagakiMCPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018FD6E8FB2992037418EEC /* AyagakiMCPHandler.swift */; };
@@ -59,6 +61,7 @@
 		59CC35E4617B7E5707751C58 /* Ayagaki-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Ayagaki-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B837B4A4EE5EAB3174B9488 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
 		6CA307B6AF1B58ABC8012C3A /* HTTPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServer.swift; sourceTree = "<group>"; };
+		76A1BEA39284F325EBC4E7E8 /* KoraiGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KoraiGeometry.swift; sourceTree = "<group>"; };
 		78C77A11E22483BB1F2B6C43 /* BraidModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BraidModel.swift; sourceTree = "<group>"; };
 		7C329D28294BDC32DE4CEE75 /* TedoriView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TedoriView.swift; sourceTree = "<group>"; };
 		8043F4B995C9E248C46116F1 /* PDFSheetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFSheetRenderer.swift; sourceTree = "<group>"; };
@@ -111,6 +114,7 @@
 				38D0B36F21F437C96D6E763A /* Export.swift */,
 				ADCDBF64D4245C8A4F3F9B20 /* GridCanvasView.swift */,
 				363A5050962A55CB16C8FEB8 /* GridGeometry.swift */,
+				76A1BEA39284F325EBC4E7E8 /* KoraiGeometry.swift */,
 				E88D3FABD79BBE504FB91C4D /* Main.swift */,
 				9FAF549A8C82FBD9F1C2700D /* NotationView.swift */,
 				8043F4B995C9E248C46116F1 /* PDFSheetRenderer.swift */,
@@ -225,6 +229,7 @@
 				CC9A3FE9B876F9E3004A929E /* GridCanvasView.swift in Sources */,
 				6225BE536361AF46B8850F59 /* GridGeometry.swift in Sources */,
 				9498F26A9739AD1CBA4F68E6 /* HTTPServer.swift in Sources */,
+				24CA39F16A7DAA4CA8EBFFB3 /* KoraiGeometry.swift in Sources */,
 				CB8C065ED9D6D0E86D76FC46 /* MCPServerController.swift in Sources */,
 				E11A6DB62E37CC7BCD610DD1 /* Main.swift in Sources */,
 				5D3A93FA19B2236176CDE3D8 /* NotationView.swift in Sources */,
@@ -253,6 +258,7 @@
 				5A8C42299B3B7E571E72FE37 /* GridCanvasView.swift in Sources */,
 				F2048018058000F8BD6F0074 /* GridGeometry.swift in Sources */,
 				E3688DA050C78301054469AA /* HTTPServer.swift in Sources */,
+				22258CD4D58ED52A74CA13DF /* KoraiGeometry.swift in Sources */,
 				A05CAE46FC7358A40641EE01 /* MCPServerController.swift in Sources */,
 				68AD0922250A3D3ED8F236A6 /* Main.swift in Sources */,
 				C47C20D989F1B7C2FE9A5E3B /* NotationView.swift in Sources */,

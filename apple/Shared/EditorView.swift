@@ -198,7 +198,8 @@ struct EditorView: View {
             let pad: CGFloat = 8
             let avail = CGSize(width: max(proxy.size.width - 2 * pad, 1),
                                height: max(proxy.size.height - 2 * pad, 1))
-            let fit = GridGeometry.fitScale(cols: vm.cols, rows: vm.rowCount, in: avail)
+            let fit = AyagakiGeometry.fitScale(braid: vm.braid, cols: vm.cols,
+                                               rows: vm.rowCount, in: avail)
             let scale = max(0.05, fit * zoom * pinchZoom)
             ScrollView([.horizontal, .vertical]) {
                 GridCanvasView(vm: vm, paintEnabled: paintEnabled, scale: scale)
@@ -274,7 +275,9 @@ struct EditorView: View {
     }
 
     private var legend: some View {
-        Text("綾名：ナミ／上n＝上n下(6−n)の手取り ／ 先頭の数字：糸交換 ／ 丸数字：元の色に戻す ／ ⬆（中央で上ル）は中央の色から自動")
+        Text(vm.braid == .korai
+             ? "綾名：ナミ／上3・上2下1・上下上…（畝 w=1,3,5 の目を内側から読む）／ ⬆ は中央の目の色から（暫定）。糸交換の数字と手取り図は未対応"
+             : "綾名：ナミ／上n＝上n下(6−n)の手取り ／ 先頭の数字：糸交換 ／ 丸数字：元の色に戻す ／ ⬆（中央で上ル）は中央の色から自動")
             .font(.caption2)
             .foregroundColor(.secondary)
     }
@@ -423,6 +426,11 @@ private struct SettingsForm: View {
                 TextField("デザイン名", text: Binding(
                     get: { vm.design.name ?? "" },
                     set: { vm.rename($0) }))
+                Picker("組み方", selection: Binding(get: { vm.braid }, set: { vm.setBraid($0) })) {
+                    ForEach(BraidType.allCases, id: \.self) { b in
+                        Text(b.label).tag(b)
+                    }
+                }
                 Picker("玉数", selection: Binding(get: { vm.tama }, set: { vm.setTama($0) })) {
                     ForEach(BraidSpec.tamaOptions, id: \.self) { t in
                         Text("\(t)玉（片面\(BraidSpec.cols(forTama: t))目）").tag(t)
