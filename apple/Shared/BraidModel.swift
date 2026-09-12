@@ -508,28 +508,136 @@ enum Notation {
         return runs.map { ($0.flag ? "上" : "下") + "\($0.n)" }.joined()
     }
 
-    /// 高麗組の片面の全段の記号。安田組の生成（sideSymbols）には一切触らない別関数。
-    /// 現状は「綾名 ＋ ⬆」だけ。糸交換の番号（3.4.5・丸数字）と（下下）（上上）（トリ）は未対応だが、
-    /// RowSymbol の plain / circled に後から足せるよう同じ構造で返す。
+    /// 高麗組の糸交換の ● 印（畝 w = 0,2,4,6 ＝＼の目）。
+    ///
+    /// 1 本の糸は 1 段に 1 目盛ずつ外へ進むので、段 r で位置 n にいる糸を t = r − n + 1 と呼ぶと、
+    /// 糸 t が通る＼の目は (w, k) = (w, t + 2w)。すなわち目 (w,k) の一つ手前の＼の目は (w−2, k−4)。
+    /// 手前が白で今が柄なら「素の数字」（下段の柄糸を上段へ上げる）＝ false、
+    /// 手前が柄で今が白なら「丸数字」（上げた糸を下段へ戻す）＝ true。
+    /// w=0 の手前は常に白。手前の目がグリッドの外に出る k<5 は判定できないので印を付けない。
+    /// 返り値は k → 丸数字か
+    static func koraiMarks(_ plane: [[Int]], wale w: Int) -> [Int: Bool] {
+        let d = 2 * w
+        guard let width = plane.first?.count, d < width else { return [:] }
+        var out: [Int: Bool] = [:]
+        for k in stride(from: 1, through: plane.count, by: 1) {
+            let cur = plane[k - 1][d]
+            let prev: Int
+            if w == 0 {
+                prev = 0
+            } else if k - 4 >= 1 {
+                prev = plane[k - 5][d - 4]
+            } else {
+                continue                                  // 手前がグリッドの外＝判定不能
+            }
+            if prev == 0 && cur > 0 { out[k] = false }
+            else if prev > 0 && cur == 0 { out[k] = true }
+        }
+        return out
+    }
+
+    /// 高麗組の糸交換の数字を「どの段に書くか」。
+    ///
+    /// 1 つの ● は 3 段のうちどの段に書いてもよい（入れかえは手取りの綾に隠れる部分で行うので
+    /// 3 段先まで入れかえられる）。本の書き方は次の貪欲法で再現する:
+    /// 同じ畝 w の ● を k の小さい順に見て、まだ組に入っていない一番小さい k を k0 とし、
+    /// k0 ≤ k ≤ k0+2 の ● を 1 組にして段 r = k0 にまとめて書く。
+    /// 組の中の目 k の番号は n = 2w + 1 − (k − k0)（w=2 なら 5,4,3 / w=4 なら 9,8,7 / w=6 なら 13,12,11）。
+    /// 例外: ● が 3 個連続する並びは必ず 1 組（その先頭は別の組に巻き込まない）、
+    /// k が飛んでいる ● を同じ組にするのは種類（素/丸）が同じときだけ、
+    /// k0 が段数を超える組は書ける一番遅い段まで引き上げる。
+    /// 返り値は段の index（0 始まり）→ [(番号, 丸数字か)]
+    static func koraiTokens(_ plane: [[Int]]) -> [[(n: Int, circled: Bool)]] {
+        let rows = plane.count
+        var out = [[(n: Int, circled: Bool)]](repeating: [], count: rows)
+        guard rows > 0 else { return out }
+        let wales = BraidSpec.wales(forCols: plane[0].count)
+        for w in stride(from: 2, to: wales, by: 2) {
+            let m = koraiMarks(plane, wale: w)
+            let ks = m.keys.sorted()
+            guard !ks.isEmpty else { continue }
+            // 3 連続の ● は 1 組から外さない（先に切り出して、その先頭を「巻き込み禁止」にする）
+            var keep = Set<Int>()
+            var i = 0
+            while i < ks.count {
+                var j = i
+                while j + 1 < ks.count && ks[j + 1] == ks[j] + 1 { j += 1 }
+                let run = Array(ks[i...j])
+                if run.count >= 3 {
+                    for s in stride(from: 0, to: run.count, by: 3) where s + 3 <= run.count {
+                        keep.insert(run[s])
+                    }
+                }
+                i = j + 1
+            }
+            var used = Set<Int>()
+            var groups: [[Int]] = []
+            for k in ks where !used.contains(k) {
+                var grp = [k]
+                used.insert(k)
+                for k2 in ks {
+                    if used.contains(k2) || !(k < k2 && k2 <= k + 2) { continue }
+                    if keep.contains(k2) { break }              // 3 連続の組の先頭は巻き込まない
+                    if k2 != grp[grp.count - 1] + 1 && m[k2] != m[grp[0]] { break }
+                    grp.append(k2)                              // 飛んだ先は同じ種類のときだけ同じ組
+                    used.insert(k2)
+                    if grp.count == 3 { break }
+                }
+                groups.append(grp)
+            }
+            for grp in groups {
+                var k0 = grp[0]
+                if k0 > rows { k0 = rows }                      // 段数を超える組は一番遅い段へ
+                guard let lo = grp.first, let hi = grp.last,
+                      k0 >= 1, hi - 2 <= k0, k0 <= lo else { continue }
+                for k in grp {
+                    out[k0 - 1].append((2 * w + 1 - (k - k0), m[k] == true))
+                }
+            }
+        }
+        for r in out.indices {
+            out[r].sort { $0.n == $1.n ? (!$0.circled && $1.circled) : $0.n < $1.n }
+        }
+        return out
+    }
+
+    /// 高麗組の数字の書式。数字と丸数字を数値順に 1 列にし、素の数字の後だけ「.」。
+    /// 安田組と違い範囲圧縮はしない（1 組は最大 3 個なので本も並記している）
+    static func koraiNumberList(_ tokens: [(n: Int, circled: Bool)]) -> String {
+        tokens.map { $0.circled ? circled($0.n) : "\($0.n)." }.joined()
+    }
+
+    /// 高麗組の片面の全段の記号（糸交換の数字・丸数字 ＋ 綾名 ＋ ⬆）。
+    /// 安田組の生成（sideSymbols）には一切触らない別関数。
     ///
     /// 段 r の綾名は、畝 w=1,3,5 の目を k=r で読む（データ上は plane[r-1][2w]）。
-    /// ⬆ は**暫定規則**: その半面の中央の目（w=0, k=r）に色がある段に付ける。
-    /// 書籍（1-4〜1-15）と照合して後で直すこと。
-    static func koraiSideSymbols(_ plane: [[Int]]) -> [RowSymbol] {
-        plane.map { row in
-            let slots = koraiAyaSlots(rowCells: row)
-            // 暫定: 中央の目（w=0）の色をそのままその段の ⬆ とする
-            let rise = (row.first ?? 0) > 0
+    /// ⬆ は中心（w=0）の入れかえで、**反対の半面の中心の目**を見る（左右の定規は半段ずれている）:
+    /// 右半面の段 r ⇔ 左半面の (0, k=r) が柄／左半面の段 r ⇔ 右半面の (0, k=r+1) が柄。
+    /// （下下）（上上）（トリ）は未対応
+    static func koraiSideSymbols(_ plane: [[Int]], opposite: [[Int]]? = nil,
+                                 isRight: Bool = true) -> [RowSymbol] {
+        let tokens = koraiTokens(plane)
+        let offset = isRight ? 0 : 1
+        return plane.indices.map { r in
+            let slots = koraiAyaSlots(rowCells: plane[r])
+            var rise = false
+            if let other = opposite {
+                let k = r + 1 + offset                        // 段 r+1 に対する反対半面の目 k
+                rise = k >= 1 && k <= other.count && (other[k - 1].first ?? 0) > 0
+            }
             let aya = koraiAyaName(slots) + (rise ? "⬆" : "")
-            return RowSymbol(plain: [], circled: [], aya: aya, text: aya, rise: rise)
+            let tk = tokens[r]
+            return RowSymbol(plain: tk.filter { !$0.circled }.map { $0.n },
+                             circled: tk.filter { $0.circled }.map { $0.n },
+                             aya: aya, text: koraiNumberList(tk) + aya, rise: rise)
         }
     }
 
     /// 全段を生成する（段は省略せず1段ずつ）
     static func groups(cells: CellGrid, braid: BraidType = .yasuda) -> [NotationGroup] {
         if braid == .korai {
-            let lefts = koraiSideSymbols(cells.L)
-            let rights = koraiSideSymbols(cells.R)
+            let lefts = koraiSideSymbols(cells.L, opposite: cells.R, isRight: false)
+            let rights = koraiSideSymbols(cells.R, opposite: cells.L, isRight: true)
             return (0..<lefts.count).map {
                 NotationGroup(from: $0, to: $0, left: lefts[$0].text, right: rights[$0].text,
                               leftSymbol: lefts[$0], rightSymbol: rights[$0])

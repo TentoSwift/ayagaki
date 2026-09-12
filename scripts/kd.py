@@ -2,7 +2,7 @@
 """fixtures から 綾書トークンと格子色を取り出す共通部分。"""
 import json, os, re
 
-FX = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'korai_fixtures')
+FX = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'docs', 'korai-fixtures')
 BLOCKS = [('1-14','top'),('1-14','bottom'),
           ('1-17','a'),('1-17','b'),('1-17','c'),
           ('1-18','a'),('1-18','b'),('1-18','c'),('1-18','d')]

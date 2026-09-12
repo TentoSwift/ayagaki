@@ -187,7 +187,7 @@ struct PDFSheetRenderer {
         }
 
         let legend = braid == .korai
-            ? "綾名：ナミ／上3・上2下1・上下上…（畝 w=1,3,5 の目を内側から読む）／ ⬆ は中央の目の色から（暫定）"
+            ? "綾名：ナミ／上3・上2下1・上下上…（畝 w=1,3,5 の目を内側から読む）／ 糸交換の数字・丸数字は＼の目の色から／ ⬆ は反対の半面の中央の目から"
             : "綾名：ナミ／上a下b…（合計6）の手取り ／ 先頭の数字：糸交換（上下段の糸を入れかえる位置）／ 丸数字：入れかえて元の色に戻す"
         drawText(legend, at: CGPoint(x: origin.x, y: y + 16), size: 7, bold: false,
                  color: gray(0.45), ctx: ctx)

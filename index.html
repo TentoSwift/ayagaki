@@ -205,7 +205,7 @@
         <span id="yasudaHint">記号の意味 — <b>綾名</b>：ナミ／上a下b…（合計6）の手取り／<b>先頭の数字</b>：糸交換（上下段の糸を入れかえる位置）／<b>丸数字</b>：入れかえて元の色に戻す。<br>
         数えるのは入れかえの目（1目おき・片面目数の半分。60玉＝6目）のみ。⬆（中央で上ル）は中央の色（d=0）から自動で導出されます（記号表は読み取り専用）。</span>
         <span id="braidHint">二枚高麗組（杉綾の目）— <b>綾名</b>：ナミ／上3／上2下1／上1下2／下1上2／下2上1／上下上／下上下。畝 w=1,3,5 の ／ の目（手取り）を内側から読みます。<br>
-        ⬆ は中央の目の色から付きます（<b>暫定規則</b>・書籍と要照合）。糸交換の数字（3.4.5 など）・（下下）（上上）（トリ）・手取り図は未対応です。</span>
+        糸交換の数字（3.4.5 など）と戻しの丸数字は＼の目の色から自動生成します。⬆ は<b>反対の半面</b>の中央の目から付きます（左右の定規は半段ずれ）。（下下）（上上）（トリ）・高麗組の手取り図は未対応です。</span>
       </div>
     </div>
 
@@ -772,8 +772,8 @@ function sideTexts(side) { return sideSymbols(side).map(x => x.text); }
    段 r の綾名は畝 w=1,3,5 の目を k=r で読む（データ上は app.cells[side][r-1][2w]）。
    走りが2つなら数字付き（上1下2・上2下1・下1上2・下2上1）、3つなら数字なし（上下上・下上下）、
    全部上なら 上3、全部下なら ナミ。
-   糸交換の番号（3.4.5・丸数字）と（下下）（上上）（トリ）・手取り図は未対応だが、
-   後から plain / circled に足せるよう安田組の RowSymbol と同じ形で返す */
+   糸交換の番号（3.4.5・丸数字）と ⬆ は koraiMarks / koraiTokens / koraiSideSymbols。
+   （下下）（上上）（トリ）・高麗組の手取り図は未対応 */
 function koraiAyaSlots(side, r) {
   const W = wales(), out = [];
   for (let w = 1; w < W; w += 2) out.push(app.cells[side][r][koraiColumn(w)] > 0);
@@ -789,14 +789,98 @@ function koraiAyaName(slots) {
   if (runs.length >= 3) return runs.map(x => (x.f ? "上" : "下")).join("");
   return runs.map(x => (x.f ? "上" : "下") + x.n).join("");
 }
+/* 高麗組の糸交換の ● 印（畝 w = 0,2,4,6 ＝＼の目）。
+   1 本の糸は 1 段に 1 目盛ずつ外へ進むので、目 (w,k) の一つ手前の＼の目は (w-2, k-4)。
+   手前が白で今が柄なら「素の数字」（false）、手前が柄で今が白なら「丸数字」（true）。
+   w=0 の手前は常に白。手前がグリッドの外に出る k<5 は判定不能なので印を付けない。
+   返り値は Map(k -> 丸数字か) */
+function koraiMarks(side, w) {
+  const d = koraiColumn(w), out = new Map();
+  if (d >= cols()) return out;
+  for (let k = 1; k <= app.rows; k++) {
+    const cur = app.cells[side][k - 1][d] > 0 ? 1 : 0;
+    let prev;
+    if (w === 0) prev = 0;
+    else if (k - 4 >= 1) prev = app.cells[side][k - 5][d - 4] > 0 ? 1 : 0;
+    else continue;                               // 手前がグリッドの外＝判定不能
+    if (prev === 0 && cur === 1) out.set(k, false);
+    else if (prev === 1 && cur === 0) out.set(k, true);
+  }
+  return out;
+}
+/* 高麗組の糸交換の数字を「どの段に書くか」。
+   1 つの ● は 3 段のうちどの段に書いてもよい（入れかえは手取りの綾に隠れる部分で行うので
+   3 段先まで入れかえられる）。同じ畝 w の ● を k の小さい順に見て、まだ組に入っていない
+   一番小さい k を k0 とし、k0 <= k <= k0+2 の ● を 1 組にして段 r = k0 にまとめて書く。
+   組の中の目 k の番号は n = 2w+1-(k-k0)（w=2 なら 5,4,3 / w=4 なら 9,8,7 / w=6 なら 13,12,11）。
+   例外: ● が 3 個連続する並びは必ず 1 組（その先頭は別の組に巻き込まない）、
+   k が飛んでいる ● を同じ組にするのは種類（素/丸）が同じときだけ、
+   k0 が段数を超える組は書ける一番遅い段まで引き上げる */
+function koraiTokens(side) {
+  const rows = app.rows, W = wales();
+  const out = Array.from({ length: rows }, () => []);
+  for (let w = 2; w < W; w += 2) {
+    const m = koraiMarks(side, w);
+    const ks = [...m.keys()].sort((a, b) => a - b);
+    if (!ks.length) continue;
+    // 3 連続の ● は 1 組から外さない（その先頭を「巻き込み禁止」にする）
+    const keep = new Set();
+    for (let i = 0; i < ks.length;) {
+      let j = i;
+      while (j + 1 < ks.length && ks[j + 1] === ks[j] + 1) j++;
+      const run = ks.slice(i, j + 1);
+      if (run.length >= 3) for (let s = 0; s + 3 <= run.length; s += 3) keep.add(run[s]);
+      i = j + 1;
+    }
+    const used = new Set(), groups = [];
+    for (const k of ks) {
+      if (used.has(k)) continue;
+      const grp = [k];
+      used.add(k);
+      for (const k2 of ks) {
+        if (used.has(k2) || !(k < k2 && k2 <= k + 2)) continue;
+        if (keep.has(k2)) break;                       // 3 連続の組の先頭は巻き込まない
+        if (k2 !== grp[grp.length - 1] + 1 && m.get(k2) !== m.get(grp[0])) break;
+        grp.push(k2);                                  // 飛んだ先は同じ種類のときだけ同じ組
+        used.add(k2);
+        if (grp.length === 3) break;
+      }
+      groups.push(grp);
+    }
+    for (const grp of groups) {
+      let k0 = grp[0];
+      if (k0 > rows) k0 = rows;                        // 段数を超える組は一番遅い段へ
+      const lo = grp[0], hi = grp[grp.length - 1];
+      if (!(k0 >= 1 && hi - 2 <= k0 && k0 <= lo)) continue;
+      for (const k of grp) out[k0 - 1].push({ n: 2 * w + 1 - (k - k0), circled: m.get(k) === true });
+    }
+  }
+  for (const t of out) t.sort((a, b) => a.n === b.n ? (a.circled ? 1 : 0) - (b.circled ? 1 : 0) : a.n - b.n);
+  return out;
+}
+/* 高麗組の数字の書式。数字と丸数字を数値順に 1 列にし、素の数字の後だけ「.」。
+   安田組と違い範囲圧縮はしない（1 組は最大 3 個） */
+function koraiNumberList(tokens) {
+  return tokens.map(t => t.circled ? circled(t.n) : t.n + ".").join("");
+}
+/* 高麗組の片面の全段の記号（糸交換の数字・丸数字 ＋ 綾名 ＋ ⬆）。
+   ⬆ は中心（w=0）の入れかえで、**反対の半面の中心の目**を見る（左右の定規は半段ずれている）:
+   右半面の段 r ⇔ 左半面の (0, k=r) が柄／左半面の段 r ⇔ 右半面の (0, k=r+1) が柄 */
 function koraiSideSymbols(side) {
+  const tokens = koraiTokens(side);
+  const opp = side === "R" ? "L" : "R";
+  const offset = side === "R" ? 0 : 1;
   const texts = [];
   for (let r = 0; r < app.rows; r++) {
-    // ⬆ は**暫定規則**: その半面の中央の目（w=0, k=r）に色がある段に付ける。
-    // 書籍（1-4〜1-15）と照合して後で直すこと
-    const rise = (app.cells[side][r][0] || 0) > 0;
+    const k = r + 1 + offset;                          // 段 r+1 に対する反対半面の目 k
+    const rise = k >= 1 && k <= app.rows && (app.cells[opp][k - 1][0] || 0) > 0;
     const aya = koraiAyaName(koraiAyaSlots(side, r)) + (rise ? "⬆" : "");
-    texts.push({ plain: [], circled: [], aya, text: aya, rise });
+    const tk = tokens[r];
+    texts.push({
+      plain: tk.filter(t => !t.circled).map(t => t.n),
+      circled: tk.filter(t => t.circled).map(t => t.n),
+      aya, text: koraiNumberList(tk) + aya, rise,
+    });
   }
   return texts;
 }
